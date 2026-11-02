@@ -942,7 +942,8 @@
       <span>🖱️ Kéo chuột / Vuốt để nhìn quanh</span> •
       <span>🎡 Cuộn chuột để zoom</span> •
       <span>⌨️ WASD / Mũi tên lái tự do</span> •
-      <span>Q / E nâng hạ</span>
+      <span>Q / E nâng hạ</span> •
+      <span>Thoát tour để đào / đặt khối</span>
     </div>
   </div>
 
@@ -991,8 +992,8 @@
         <div class="ctrl-item"><span class="ctrl-key">Chuột</span> Xoay góc nhìn êm dịu</div>
         <div class="ctrl-item"><span class="ctrl-key">Space</span> Nhảy đường cong / Bơi</div>
         <div class="ctrl-item"><span class="ctrl-key">Shift</span> Chạy nhanh (Tăng FOV)</div>
-        <div class="ctrl-item"><span class="ctrl-key">Chuột Trái</span> Đào khối (Hiệu ứng vỡ)</div>
-        <div class="ctrl-item"><span class="ctrl-key">Chuột Phải</span> Đặt khối (Nảy Pop)</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột Trái / Q</span> Đào khối (Hiệu ứng vỡ)</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột Phải / E</span> Đặt khối (Nảy Pop)</div>
         <div class="ctrl-item"><span class="ctrl-key">1 - 9</span> Chọn khối trong túi</div>
         <div class="ctrl-item"><span class="ctrl-key">F / C</span> Chế độ bay / Tham quan</div>
       </div>
@@ -1624,6 +1625,8 @@
     ];
     const FLOWER_STEM_COLOR = [0.22, 0.5, 0.16];
     const FLOWER_STEM_WIDTH = 0.06;
+    const BLOCK_REACH = 6.5;
+    const OUT_OF_REACH_MESSAGE = 'Khối ở quá xa, hãy nhìn vào khối ở gần hơn';
     const TOUCH_LOOK_SPEED = 0.005;
     const IS_TOUCH_DEVICE = window.matchMedia('(pointer: coarse)').matches;
 
@@ -1634,6 +1637,7 @@
           shadows: false,
           lanternLights: 2,
           flyingPetals: 500,
+          stars: 800,
           groundPetals: 400,
           flowerDensity: 0.09,
           viewRadius: 2,
@@ -1645,6 +1649,7 @@
           shadows: true,
           lanternLights: 4,
           flyingPetals: 1400,
+          stars: 1600,
           groundPetals: 900,
           flowerDensity: 0.2, // share of grass columns with a flower
           viewRadius: 3,
@@ -3010,10 +3015,13 @@
     // =========================================================================
     const SKY_BODY_DISTANCE = 320; // inside the camera's far plane, beyond all loaded terrain
     const SKY_BODY_MODES = {
-      day: { sun: 1, moon: 0, sunColor: 0xfffbea, sunSize: 170 },
-      sunset: { sun: 1, moon: 0, sunColor: 0xffa04d, sunSize: 230 },
-      night: { sun: 0, moon: 1, sunColor: 0xffa04d, sunSize: 170 }
+      day: { sun: 1, moon: 0, stars: 0, sunColor: 0xfffbea, sunSize: 170 },
+      sunset: { sun: 1, moon: 0, stars: 0.12, sunColor: 0xffd27a, sunSize: 230 },
+      night: { sun: 0, moon: 1, stars: 1, sunColor: 0xffd27a, sunSize: 170 }
     };
+    const SKY_DOME_RADIUS = 360;
+    const STAR_DISTANCE = 340;
+    const STAR_DRIFT_SPEED = 0.004; // radians per second, the slow turning of the night sky
 
     // The visible sun and moon. Both sit in the direction of the scene's main light, so what you
     // see in the sky matches how the world is lit. They follow the camera to stay infinitely far
@@ -3031,11 +3039,94 @@
         this.moon.scale.setScalar(44);
         scene.add(this.sun, this.moonGlow, this.moon);
 
+        this.scene = scene;
+        this.dome = this.createDome();
+        scene.add(this.dome);
+
+        this.stars = new THREE.Group();
+        this.starMaterials = [
+          this.createStarLayer(QUALITY.stars, 1.5, 0.35, 0.8),
+          this.createStarLayer(Math.floor(QUALITY.stars / 10), 2.6, 0.8, 1.0)
+        ];
+        scene.add(this.stars);
+
         this.direction = new THREE.Vector3();
         this.targetSunColor = new THREE.Color();
         this.targetSun = 1;
         this.targetMoon = 0;
+        this.targetStars = 0;
         this.targetSunSize = 170;
+      }
+
+      // Gradient sky: the scene's fog colour at the horizon, so distant terrain melts into it,
+      // and the scene's sky colour overhead.
+      createDome() {
+        const dome = new THREE.Mesh(
+          new THREE.SphereGeometry(SKY_DOME_RADIUS, 24, 16),
+          new THREE.ShaderMaterial({
+            side: THREE.BackSide,
+            depthTest: false,
+            depthWrite: false,
+            uniforms: {
+              uTop: { value: new THREE.Color() },
+              uHorizon: { value: new THREE.Color() }
+            },
+            vertexShader: `
+              varying float vHeight;
+              void main() {
+                vHeight = normalize(position).y;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+              }
+            `,
+            fragmentShader: `
+              uniform vec3 uTop;
+              uniform vec3 uHorizon;
+              varying float vHeight;
+              void main() {
+                float t = pow(clamp(vHeight, 0.0, 1.0), 0.7);
+                gl_FragColor = vec4(mix(uHorizon, uTop, t), 1.0);
+              }
+            `
+          })
+        );
+        dome.renderOrder = -10; // drawn first, so everything else covers it
+        dome.frustumCulled = false;
+        return dome;
+      }
+
+      createStarLayer(count, size, minBrightness, maxBrightness) {
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+        const point = new THREE.Vector3();
+        for (let i = 0; i < count; i++) {
+          // Uniform over the sphere, skipping the part hidden below the horizon
+          point.set(Math.random() - 0.5, Math.random() * 0.55 - 0.03, Math.random() - 0.5)
+            .normalize().multiplyScalar(STAR_DISTANCE);
+          point.toArray(positions, i * 3);
+          const brightness = minBrightness + Math.random() * (maxBrightness - minBrightness);
+          const warmth = Math.random() * 0.12; // some stars are slightly warm, some slightly blue
+          colors[i * 3] = brightness;
+          colors[i * 3 + 1] = brightness * (1 - warmth * 0.4);
+          colors[i * 3 + 2] = brightness * (1 - warmth);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const material = new THREE.PointsMaterial({
+          size,
+          sizeAttenuation: false,
+          vertexColors: true,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          fog: false,
+          opacity: 0
+        });
+        const layer = new THREE.Points(geometry, material);
+        layer.renderOrder = -4;
+        layer.frustumCulled = false;
+        this.stars.add(layer);
+        return material;
       }
 
       createSprite(texture, blending, renderOrder) {
@@ -3114,9 +3205,11 @@
         const settings = SKY_BODY_MODES[mode];
         this.targetSun = settings.sun;
         this.targetMoon = settings.moon;
+        this.targetStars = settings.stars;
         this.targetSunSize = settings.sunSize;
         this.targetSunColor.setHex(settings.sunColor);
         if (!smooth) {
+          this.starMaterials.forEach(m => { m.opacity = settings.stars; });
           this.sun.material.opacity = settings.sun;
           this.moon.material.opacity = settings.moon;
           this.moonGlow.material.opacity = settings.moon * 0.4;
@@ -3125,7 +3218,20 @@
         }
       }
 
-      update(camera, lightPosition, rate) {
+      update(camera, lightPosition, dt) {
+        const rate = 1.0 - Math.exp(-2.2 * dt);
+
+        this.dome.position.copy(camera.position);
+        this.dome.material.uniforms.uTop.value.copy(this.scene.background);
+        this.dome.material.uniforms.uHorizon.value.copy(this.scene.fog.color);
+
+        this.starMaterials.forEach(m => {
+          m.opacity = THREE.MathUtils.lerp(m.opacity, this.targetStars, rate);
+        });
+        this.stars.visible = this.starMaterials[0].opacity > 0.005;
+        this.stars.position.copy(camera.position);
+        this.stars.rotation.y += STAR_DRIFT_SPEED * dt;
+
         const sunMaterial = this.sun.material;
         sunMaterial.opacity = THREE.MathUtils.lerp(sunMaterial.opacity, this.targetSun, rate);
         sunMaterial.color.lerp(this.targetSunColor, rate);
@@ -3949,8 +4055,8 @@
         if (mode === 'day') {
           // A blue sky gives the pink canopies something to contrast against; the warm pink
           // ambient light keeps faces in shade rosy instead of grey.
-          skyCol = 0x9ad3f5;
-          fogCol = 0xa9daf5;
+          skyCol = 0x4f9fe3;
+          fogCol = 0xb4dff6;
           sunCol = 0xfff3db;
           ambCol = 0xffc0d4;
           sunInt = 1.45;
@@ -3960,19 +4066,20 @@
           this.targetSunPos.set(80, 46, 54); // low enough to see without looking straight up
           if (bloomEl) bloomEl.style.opacity = '0.35';
         } else if (mode === 'sunset') {
-          skyCol = 0xf472b6;
-          fogCol = 0xfbcfe8;
-          sunCol = 0xffa7a0;
+          // Orange at the horizon rising into dusky indigo, like a real sunset
+          skyCol = 0x37397f;
+          fogCol = 0xff9e5e;
+          sunCol = 0xffb58a;
           ambCol = 0x663d5e;
           sunInt = 1.35;
           ffOpacity = 0.25;
           sunsetGlow = 0.45;
           lanternInt = 0.85;
           this.targetSunPos.set(120, 24, 40);
-          if (bloomEl) bloomEl.style.opacity = '0.65';
+          if (bloomEl) bloomEl.style.opacity = '0.2';
         } else {
           // Night
-          skyCol = 0x0a0c16;
+          skyCol = 0x03050d;
           fogCol = 0x11162b;
           sunCol = 0xa5b4fc;
           ambCol = 0x1e2442;
@@ -4235,6 +4342,10 @@
               if (pBtn) pBtn.click();
               return;
             }
+          } else if (this.isLocked && !e.repeat) {
+            // Keyboard alternative for trackpads where right click is awkward
+            if (e.code === 'KeyQ') this.handleBreakBlock();
+            else if (e.code === 'KeyE') this.handlePlaceBlock();
           }
 
           if (e.code >= 'Digit1' && e.code <= 'Digit9') {
@@ -4393,10 +4504,11 @@
 
         window.addEventListener('mousedown', (e) => {
           if (!this.isLocked || this.isCinematicTour) return;
-          if (e.button === 0) {
-            this.handleBreakBlock();
-          } else if (e.button === 2) {
+          // Ctrl + click is how a Mac trackpad or one-button mouse makes a right click
+          if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
             this.handlePlaceBlock();
+          } else if (e.button === 0) {
+            this.handleBreakBlock();
           }
         });
 
@@ -4432,12 +4544,16 @@
         this.toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
       }
 
-      getTargetBlock(maxDist = 5.5) {
-        const dir = new THREE.Vector3(
-          -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
-          Math.sin(this.player.pitch),
-          -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
-        ).normalize();
+      getTargetBlock(reach = BLOCK_REACH) {
+        // Aim through the crosshair. Reach is measured from the player, so in third person the
+        // distance between the camera and the character does not use it up.
+        const dir = this.camera.getWorldDirection(new THREE.Vector3());
+        const eyeY = this.player.pos.y + 1.6;
+        const maxDist = reach + Math.hypot(
+          this.camera.position.x - this.player.pos.x,
+          this.camera.position.y - eyeY,
+          this.camera.position.z - this.player.pos.z
+        );
 
         let px = this.camera.position.x;
         let py = this.camera.position.y;
@@ -4472,7 +4588,10 @@
 
       handleBreakBlock() {
         const target = this.getTargetBlock();
-        if (!target) return;
+        if (!target) {
+          this.showToast(OUT_OF_REACH_MESSAGE);
+          return;
+        }
 
         const bId = target.blockId;
         const isLeaves = (bId >= BLOCK_DEFS.LEAVES_LIGHT && bId <= BLOCK_DEFS.LEAVES_WHITE) ||
@@ -4491,7 +4610,10 @@
 
       handlePlaceBlock() {
         const target = this.getTargetBlock();
-        if (!target || !target.placePos) return;
+        if (!target || !target.placePos) {
+          this.showToast(OUT_OF_REACH_MESSAGE);
+          return;
+        }
 
         const p = target.placePos;
         const playerMinX = this.player.pos.x - this.player.radius;
@@ -4504,6 +4626,7 @@
         if (p.x + 1 > playerMinX && p.x < playerMaxX &&
             p.y + 1 > playerMinY && p.y < playerMaxY &&
             p.z + 1 > playerMinZ && p.z < playerMaxZ) {
+          this.showToast('Bạn đang đứng ở chỗ này, hãy lùi ra rồi đặt khối');
           return;
         }
 
@@ -5420,7 +5543,7 @@
         }
 
         // After the camera has moved this frame, so the sun and moon do not jitter
-        this.skyBodies.update(this.camera, this.sunLight.position, 1.0 - Math.exp(-2.2 * dt));
+        this.skyBodies.update(this.camera, this.sunLight.position, dt);
 
         this.renderer.render(this.scene, this.camera);
       }
