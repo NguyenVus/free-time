@@ -38,6 +38,7 @@
     </div>
     <div class="hud-btn-group">
       <button class="hud-btn" id="btn-online" title="Người chơi trong vườn">👥 Một mình</button>
+      <button class="hud-btn" id="btn-inventory" title="Túi đồ và chế tạo (phím I)">🎒 Túi Đồ</button>
       <button class="hud-btn" id="btn-music" title="Đổi bản nhạc (phím M)">🥁 Nhạc: Lễ Hội</button>
       <button class="hud-btn" id="btn-audio" title="Bật/Tắt Âm Thanh">🔊 Nhạc: BẬT</button>
       <button class="hud-btn" id="btn-tour" title="Chuyến Tham Quan Tự Động">🎥 Tham Quan</button>
@@ -109,6 +110,7 @@
         <div class="ctrl-item"><span class="ctrl-key">Vuốt</span> Xoay góc nhìn</div>
         <div class="ctrl-item"><span class="ctrl-key">Nút</span> Nhảy, đào và đặt khối</div>
         <div class="ctrl-item"><span class="ctrl-key">Thanh</span> Chạm để chọn khối</div>
+        <div class="ctrl-item"><span class="ctrl-key">DÙNG</span> Câu cá, bắn cung</div>
         <div class="ctrl-item"><span class="ctrl-key">Lặn</span> Nhìn xuống rồi đẩy joystick</div>
       </div>
 
@@ -120,6 +122,7 @@
         <div class="ctrl-item"><span class="ctrl-key">Chuột Trái / Q</span> Đào khối (Hiệu ứng vỡ)</div>
         <div class="ctrl-item"><span class="ctrl-key">Chuột Phải / E</span> Đặt khối (Nảy Pop)</div>
         <div class="ctrl-item"><span class="ctrl-key">1 - 9</span> Chọn khối trong túi</div>
+        <div class="ctrl-item"><span class="ctrl-key">I / R</span> Mở túi đồ / Câu cá, bắn cung</div>
         <div class="ctrl-item"><span class="ctrl-key">F / C</span> Chế độ bay / Tham quan</div>
       </div>
 
@@ -129,6 +132,21 @@
       <button class="btn-enter" id="btn-enter">
         🌸 BƯỚC VÀO VƯỜN HOA
       </button>
+    </div>
+  </div>
+
+  <!-- Bag and crafting -->
+  <div id="inventory-panel">
+    <div class="inventory-box">
+      <div class="inventory-header">
+        <h2>🎒 Túi Đồ &amp; Chế Tạo</h2>
+        <button class="inventory-close" id="inventory-close" title="Đóng (phím I)">✕</button>
+      </div>
+      <p class="inventory-hint">Chạm vào một khối để đưa vào ô đang chọn trên thanh khối.</p>
+      <div id="inventory-items"></div>
+      <h3>Chế tạo</h3>
+      <div id="inventory-recipes"></div>
+      <label class="inventory-creative"><input type="checkbox" id="inventory-creative" /> Chế độ Sáng tạo: xây tự do, không tốn đồ</label>
     </div>
   </div>
 
@@ -187,6 +205,7 @@
       <div class="mob-btn" id="mob-jump">NHẢY</div>
       <div class="mob-btn" id="mob-break">ĐÀO</div>
       <div class="mob-btn" id="mob-place">ĐẶT</div>
+      <div class="mob-btn" id="mob-use">DÙNG</div>
     </div>
   </div>
 

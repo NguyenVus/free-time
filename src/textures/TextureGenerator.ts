@@ -374,6 +374,26 @@ export class TextureGenerator {
       ctx.fillRect(4, 6, 1, 1); ctx.fillRect(12, 10, 1, 1);
     });
 
+    atlas['snow'] = this.create16x16(ctx => {
+      const cols = ['#f6f8fc', '#ffffff', '#e8eef7', '#dfe7f3'];
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    });
+
+    atlas['volcanic_rock'] = this.create16x16(ctx => {
+      const cols = ['#3b3a44', '#45434f', '#33323b', '#514e5b', '#2b2a32'];
+      for (let y = 0; y < 16; y++) {
+        for (let x = 0; x < 16; x++) {
+          ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    });
+
     return atlas;
   }
 }

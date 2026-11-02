@@ -21,7 +21,9 @@ export const BLOCK_DEFS = {
   LEAVES_SOFT: 16,
   LEAVES_MAGENTA: 17,
   GROUND_PETALS_CARPET: 18,
-  PAPER_LANTERN: 19
+  PAPER_LANTERN: 19,
+  SNOW: 20,
+  VOLCANIC_ROCK: 21
 };
 
 export const BLOCK_NAMES = {
@@ -44,7 +46,9 @@ export const BLOCK_NAMES = {
   [BLOCK_DEFS.LEAVES_SOFT]: 'Hoa hồng phấn (Soft Pink)',
   [BLOCK_DEFS.LEAVES_MAGENTA]: 'Hoa anh đào thẫm (Magenta)',
   [BLOCK_DEFS.GROUND_PETALS_CARPET]: 'Thảm cánh hoa rơi (Carpet)',
-  [BLOCK_DEFS.PAPER_LANTERN]: 'Đèn lồng cành cây (Paper Lantern)'
+  [BLOCK_DEFS.PAPER_LANTERN]: 'Đèn lồng cành cây (Paper Lantern)',
+  [BLOCK_DEFS.SNOW]: 'Tuyết đỉnh núi (Snow)',
+  [BLOCK_DEFS.VOLCANIC_ROCK]: 'Đá núi lửa (Volcanic Rock)'
 };
 
 export const HOTBAR_ITEMS = [

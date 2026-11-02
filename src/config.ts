@@ -2,7 +2,17 @@
 // 4. VOXEL WORLD ENGINE (Greedy Face Culling & Vertex Sway Shader)
 // =========================================================================
 export const CHUNK_SIZE = 16;
-export const CHUNK_HEIGHT = 32;
+export const CHUNK_HEIGHT = 64;
+// Natural hills keep their old limits, so the world outside the mountain does not change
+export const NATURAL_TERRAIN_MAX = 26;
+export const TREE_MAX_GROUND = 19;
+export const FUJI = {
+  x: 110, z: -240, radius: 120, rimRadius: 9, craterDepth: 5,
+  baseY: 12, peakY: 58, rockY: 28, snowY: 44,
+  profilePower: 1.8 // concave like the real mountain; the steepest part must stay climbable
+};
+export const FUJI_ROAD = { x: 78, startZ: -25, endZ: -150, halfWidth: 1.6, bankWidth: 6, treeClearance: 3.5, clearWidth: 2.6, clearHeight: 4 };
+export const fujiHazeForDistance = (distance: number) => Math.max(0.12, Math.min(0.6, (distance - 70) / 500));
 export const VILLAGE = { x: 78, z: 13, radius: 38, blend: 16, groundY: 12 };
 export const VILLAGE_ROAD = { z: 13, startX: -1, halfWidth: 1.6, bankWidth: 6, treeClearance: 3.5, clearWidth: 2.6, clearHeight: 4 };
 export const VILLAGE_TREE_CLEARANCE = 11; // tree canopies spread this far, and must not cover the field
@@ -73,7 +83,7 @@ export const QUALITY = IS_TOUCH_DEVICE
       lanternLights: 2,
       flyingPetals: 500,
       fish: 25,
-      animals: { deer: 3, sheep: 8, rabbit: 6 },
+      animals: { boar: 4, deer: 3, sheep: 8, rabbit: 6 },
       stars: 800,
       groundPetals: 400,
       flowerDensity: 0.09,
@@ -86,7 +96,7 @@ export const QUALITY = IS_TOUCH_DEVICE
       lanternLights: 4,
       flyingPetals: 1400,
       fish: 60,
-      animals: { deer: 9, sheep: 16, rabbit: 12 },
+      animals: { boar: 6, deer: 9, sheep: 16, rabbit: 12 },
       stars: 1600,
       groundPetals: 900,
       flowerDensity: 0.2, // share of grass columns with a flower

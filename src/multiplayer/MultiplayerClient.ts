@@ -1,4 +1,5 @@
-import { BLOCK_DEFS, HOTBAR_ITEMS } from '../world/blocks';
+import { BLOCK_DEFS } from '../world/blocks';
+import { PLACEABLE_BLOCKS } from '../items/items';
 import { CHUNK_HEIGHT } from '../config';
 import { VoxelCharacter } from '../player/VoxelCharacter';
 
@@ -60,7 +61,7 @@ export const isValidEdit = (edit: unknown): edit is SharedEdit =>
   Number.isInteger(edit[0]) && Math.abs(edit[0]) < 1e6 &&
   Number.isInteger(edit[1]) && edit[1] >= 0 && edit[1] < CHUNK_HEIGHT &&
   Number.isInteger(edit[2]) && Math.abs(edit[2]) < 1e6 &&
-  (edit[3] === BLOCK_DEFS.AIR || HOTBAR_ITEMS.some(item => item.id === edit[3])) &&
+  (edit[3] === BLOCK_DEFS.AIR || PLACEABLE_BLOCKS.has(edit[3] as number)) &&
   isPlausibleEditTime(edit[4]);
 
 export class MultiplayerClient {
