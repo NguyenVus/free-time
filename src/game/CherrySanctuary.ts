@@ -6,10 +6,12 @@ import { Fishing, type FishingEvent } from '../activities/Fishing';
 import { Hunting } from '../activities/Hunting';
 import { getBlockDrops, getItemForBlock, getRequiredPickaxeTier, ITEMS } from '../items/items';
 import { Inventory } from '../items/Inventory';
+import { HeldItem } from '../player/HeldItem';
 import { InventoryPanel } from '../ui/InventoryPanel';
 import type { ArrowHit } from '../creatures/AnimalSystem';
 
 const HOTBAR_STORAGE_KEY = 'cherry_hotbar';
+const HOLDABLE_TOOLS = new Set(['wooden_pickaxe', 'stone_pickaxe', 'fishing_rod', 'bow']);
 import { BlockPlacementAnimator } from '../effects/BlockPlacementAnimator';
 import { FishSystem } from '../creatures/FishSystem';
 import { GroundPetalSystem } from '../effects/GroundPetalSystem';
@@ -27,6 +29,8 @@ import { WindSystem } from '../world/WindSystem';
 // 9. MAIN ENGINE ORCHESTRATOR
 // =========================================================================
 export class CherrySanctuary {
+  declare heldItem: HeldItem;
+  declare heldTool: string | null;
   declare inventory: Inventory;
   declare inventoryPanel: InventoryPanel;
   declare hotbarItems: string[];
@@ -250,7 +254,10 @@ export class CherrySanctuary {
     this.inventory = new Inventory();
     this.hotbarItems = this.loadHotbar();
     this.inventory.onChange(() => this.refreshHotbarCounts());
-    this.inventoryPanel = new InventoryPanel(this.inventory, this.textures, id => this.putInActiveSlot(id), message => this.showToast(message));
+    this.heldItem = new HeldItem(this.textures);
+    this.heldTool = null;
+    this.inventoryPanel = new InventoryPanel(this.inventory, this.textures, id => this.putInActiveSlot(id), id => this.holdTool(id), message => this.showToast(message));
+    this.scene.add(this.camera); // things it carries, such as the fishing rod, are drawn only if it is in the scene
     this.fishing = new Fishing(this.scene, this.world, (event, item) => this.handleFishingEvent(event, item));
     this.hunting = new Hunting(this.scene, this.world, this.animals, (killed, hit) => this.handleArrowHit(killed, hit));
     this.initHotbarUI();
@@ -679,6 +686,25 @@ export class CherrySanctuary {
     this.refreshHotbarCounts();
   }
 
+  // A tool from the bag stays in hand until the player picks a block slot again
+  holdTool(itemId: string): boolean {
+    if (!HOLDABLE_TOOLS.has(itemId)) return false;
+    this.heldTool = itemId;
+    this.showToast(`Đang cầm: ${ITEMS[itemId].name}`);
+    return true;
+  }
+
+  updateHeldItem(dt: number) {
+    const slotItem = this.hotbarItems[this.activeSlot];
+    const tier = this.inventory.pickaxeTier();
+    this.heldItem.update(dt, this.camera, this.character, this.isThirdPerson, {
+      hidden: this.isCinematicTour || this.fishing.isActive || this.heldTool === 'fishing_rod',
+      tool: this.heldTool,
+      slotItem: this.inventory.has(slotItem) ? slotItem : null,
+      bestPickaxe: tier === 2 ? 'stone_pickaxe' : tier === 1 ? 'wooden_pickaxe' : null
+    });
+  }
+
   refreshHotbarCounts() {
     document.querySelectorAll('.hotbar-slot').forEach((slot, i) => {
       const itemId = this.hotbarItems[i];
@@ -690,6 +716,7 @@ export class CherrySanctuary {
 
   putInActiveSlot(itemId: string) {
     this.hotbarItems[this.activeSlot] = itemId;
+    this.heldTool = null;
     try {
       localStorage.setItem(HOTBAR_STORAGE_KEY, JSON.stringify(this.hotbarItems));
     } catch (e) {
@@ -743,6 +770,7 @@ export class CherrySanctuary {
         return;
       }
       this.hunting.shoot(this.camera.position, direction);
+      this.heldItem.showBow();
       this.audio.playBlockPlace();
       return;
     }
@@ -757,6 +785,10 @@ export class CherrySanctuary {
     } else if (event === 'bite') {
       this.showToast('🎣 Cá cắn câu! Bấm ngay!');
       this.audio.playBlockBreak();
+      this.splashAt(this.fishing.position, 8);
+    } else if (event === 'splash') {
+      this.splashAt(this.fishing.position, 18);
+      this.audio.playBlockBreak();
     } else if (event === 'caught') {
       this.inventory.add(item);
       this.showToast(`Câu được: ${ITEMS[item].name}!`);
@@ -766,6 +798,10 @@ export class CherrySanctuary {
     } else if (event === 'too-far') {
       this.showToast('Đi quá xa, đã thu dây câu');
     }
+  }
+
+  splashAt(position: THREE.Vector3, count: number) {
+    this.blockParticles.burst(position.x - 0.5, position.y - 0.5, position.z - 0.5, BLOCK_DEFS.WATER, count);
   }
 
   handleArrowHit(killed: boolean, hit: ArrowHit) {
@@ -780,6 +816,7 @@ export class CherrySanctuary {
 
   selectSlot(idx) {
     this.activeSlot = (idx + this.hotbarItems.length) % this.hotbarItems.length;
+    this.heldTool = null;
     document.querySelectorAll('.hotbar-slot').forEach((s, i) => {
       s.classList.toggle('active', i === this.activeSlot);
     });
@@ -1286,6 +1323,7 @@ export class CherrySanctuary {
     }
 
     const bId = target.blockId;
+    this.heldItem.startSwing();
     const tierNeeded = getRequiredPickaxeTier(bId);
     if (this.inventory.pickaxeTier() < tierNeeded) {
       this.showToast(`Khối này cần ${tierNeeded === 2 ? 'Cuốc đá' : 'Cuốc gỗ'}. Chế tạo trong Túi Đồ`);
@@ -1340,6 +1378,7 @@ export class CherrySanctuary {
       this.showToast(`Hết ${ITEMS[itemId].name}. Đào hoặc chế tạo thêm nhé`);
       return;
     }
+    this.heldItem.startSwing();
     const blockId = ITEMS[itemId].block;
     const editTime = this.world.setBlock(p.x, p.y, p.z, blockId);
     this.multiplayer.shareEdit(p.x, p.y, p.z, blockId, editTime);
@@ -2266,7 +2305,11 @@ export class CherrySanctuary {
 
     this.fish.update(dt, this.isCinematicTour ? this.camera.position : this.player.pos);
     this.animals.update(dt, this.isCinematicTour ? this.camera.position : this.player.pos, this.viewRadius);
-    this.fishing.update(dt, this.camera.position);
+    const showRod = !this.isCinematicTour && (this.fishing.isActive || this.heldTool === 'fishing_rod');
+    this.fishing.rod.visible = showRod;
+    const rodTip = showRod ? this.fishing.holdRod(this.camera, this.character, this.isThirdPerson) : this.player.pos;
+    this.fishing.update(dt, this.player.pos, rodTip);
+    this.updateHeldItem(dt);
     this.hunting.update(dt);
     this.multiplayer.update(dt, this.player, isMoving);
 

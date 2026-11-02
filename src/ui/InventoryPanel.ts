@@ -27,6 +27,7 @@ export class InventoryPanel {
     private inventory: Inventory,
     private textures: Record<string, { canvas?: HTMLCanvasElement }>,
     private onChooseForHotbar: (itemId: string) => void,
+    private onChooseTool: (itemId: string) => boolean,
     private onToast: (message: string) => void
   ) {
     inventory.onChange(() => {
@@ -65,7 +66,7 @@ export class InventoryPanel {
       cell.appendChild(label);
       cell.addEventListener('click', () => {
         if (ITEMS[id].block !== undefined) this.onChooseForHotbar(id);
-        else this.onToast(ITEMS[id].name);
+        else if (!this.onChooseTool(id)) this.onToast(ITEMS[id].name);
       });
       this.bag.appendChild(cell);
     }
