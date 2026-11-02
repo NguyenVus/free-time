@@ -1392,6 +1392,12 @@
     // =========================================================================
     const CHUNK_SIZE = 16;
     const CHUNK_HEIGHT = 32;
+    const STREAM_BUDGET_MS = 4;
+    const MAX_LANTERN_LIGHTS = 4;
+    const LANTERN_REFRESH_MS = 300;
+    const LOW_FPS_THRESHOLD = 35;
+    const LOW_FPS_READINGS = 8; // sampled every 250ms
+    const MIN_RENDER_SCALE = 0.75;
 
     class VoxelWorld {
       constructor(scene, textures) {
@@ -1399,11 +1405,11 @@
         this.textures = textures;
         this.noise = new SimpleNoise(31415);
         this.chunks = new Map();
-        this.lanternLights = new Map();
+        this.placedLanterns = new Map();
         this.modifiedBlocks = new Map();
-        this.structureBlocks = new Map();
         this.decoratedChunks = new Set();
-        this.chunkMeshQueue = [];
+        this.streamTasks = [];
+        this.lastChunk = null;
         this.treeLanterns = [];
 
         this.lakeCenter = { x: -14, z: 12 };
@@ -1595,20 +1601,18 @@
           if (chunk.mesh) this.scene.remove(chunk.mesh);
         });
         this.chunks.clear();
-        this.structureBlocks.clear();
+        this.lastChunk = null;
         this.decoratedChunks.clear();
-        this.chunkMeshQueue = [];
+        this.streamTasks = [];
         this.treeLanterns = [];
-        this.lanternLights.forEach(light => this.scene.remove(light));
-        this.lanternLights.clear();
+        this.placedLanterns.clear();
       }
 
       getBlock(x, y, z) {
         if (y < 0 || y >= CHUNK_HEIGHT) return BLOCK_DEFS.AIR;
-        const key = `${x},${y},${z}`;
-        if (this.modifiedBlocks.has(key)) return this.modifiedBlocks.get(key);
-        if (this.structureBlocks.has(key)) return this.structureBlocks.get(key);
 
+        // chunk.blocks already includes player edits and trees, so no string-keyed lookups are
+        // needed here. This is the hottest function in the game (meshing, physics, minimap).
         const cx = Math.floor(x / CHUNK_SIZE);
         const cz = Math.floor(z / CHUNK_SIZE);
         const chunk = this.getOrCreateChunk(cx, cz);
@@ -1631,13 +1635,9 @@
         chunk.blocks[lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE] = blockId;
 
         if (blockId === BLOCK_DEFS.LANTERN || blockId === BLOCK_DEFS.PAPER_LANTERN) {
-          const light = new THREE.PointLight(0xffa726, 2.2, 18);
-          light.position.set(x + 0.5, y + 0.5, z + 0.5);
-          this.scene.add(light);
-          this.lanternLights.set(key, light);
-        } else if (this.lanternLights.has(key)) {
-          this.scene.remove(this.lanternLights.get(key));
-          this.lanternLights.delete(key);
+          this.placedLanterns.set(key, { x, y, z });
+        } else {
+          this.placedLanterns.delete(key);
         }
 
         // Rebuild only the affected chunk and direct neighbors
@@ -1648,10 +1648,33 @@
         if (lz === CHUNK_SIZE - 1) this.buildChunkMesh(this.getOrCreateChunk(cx, cz + 1));
       }
 
-      getOrCreateChunk(cx, cz) {
-        const key = `${cx},${cz}`;
-        if (this.chunks.has(key)) return this.chunks.get(key);
+      getLoadedChunk(cx, cz) {
+        const last = this.lastChunk;
+        if (last && last.cx === cx && last.cz === cz) return last;
+        const chunk = this.chunks.get(`${cx},${cz}`);
+        if (!chunk) return null;
+        this.lastChunk = chunk;
+        return chunk;
+      }
 
+      // Top non-air block of a column, or null if its chunk is not loaded (never generates terrain).
+      getLoadedTopBlock(x, z) {
+        const chunk = this.getLoadedChunk(Math.floor(x / CHUNK_SIZE), Math.floor(z / CHUNK_SIZE));
+        if (!chunk) return null;
+        const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+          const b = chunk.blocks[lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
+          if (b !== BLOCK_DEFS.AIR) return b;
+        }
+        return BLOCK_DEFS.AIR;
+      }
+
+      getOrCreateChunk(cx, cz) {
+        const loaded = this.getLoadedChunk(cx, cz);
+        if (loaded) return loaded;
+
+        const key = `${cx},${cz}`;
         const chunk = {
           cx, cz,
           blocks: new Uint8Array(CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT),
@@ -1776,7 +1799,6 @@
           if (wy < 0 || wy >= CHUNK_HEIGHT) return;
           const key = `${wx},${wy},${wz}`;
           if (!this.modifiedBlocks.has(key)) {
-            this.structureBlocks.set(key, blockId);
             const targetChunk = this.getOrCreateChunk(Math.floor(wx / CHUNK_SIZE), Math.floor(wz / CHUNK_SIZE));
             const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
             const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
@@ -2290,47 +2312,74 @@
         return stats;
       }
 
-      updateAround(playerX, playerZ, radiusChunks = 3) {
+      // Loads the area right now. Blocks the main thread, so keep the radius small.
+      updateAround(playerX, playerZ, radiusChunks) {
+        this.scheduleAround(playerX, playerZ, radiusChunks);
+        this.processStreamTasks(Infinity);
+      }
+
+      // Replaces the pending work with the chunks missing around this position, nearest first.
+      scheduleAround(playerX, playerZ, radiusChunks) {
         const pcx = Math.floor(playerX / CHUNK_SIZE);
         const pcz = Math.floor(playerZ / CHUNK_SIZE);
 
-        // Phase 1: Ensure terrain exists for radius + 1 margin
-        for (let dz = -radiusChunks - 1; dz <= radiusChunks + 1; dz++) {
-          for (let dx = -radiusChunks - 1; dx <= radiusChunks + 1; dx++) {
-            this.getOrCreateChunk(pcx + dx, pcz + dz);
+        // Chunks are never unloaded, so hide far ones to keep draw calls flat while exploring.
+        const visibleRadius = radiusChunks + 2;
+        this.chunks.forEach(chunk => {
+          if (chunk.mesh) {
+            chunk.mesh.visible = Math.max(Math.abs(chunk.cx - pcx), Math.abs(chunk.cz - pcz)) <= visibleRadius;
+          }
+        });
+
+        const tasks = [];
+        for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
+          for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
+            const chunk = this.getLoadedChunk(pcx + dx, pcz + dz);
+            if (!chunk || !chunk.mesh) {
+              tasks.push({ cx: pcx + dx, cz: pcz + dz, dist: Math.hypot(dx, dz) });
+            }
+          }
+        }
+        tasks.sort((a, b) => a.dist - b.dist);
+        this.streamTasks = tasks;
+      }
+
+      // Runs pending work until the time budget is spent; always does at least one step.
+      processStreamTasks(budgetMs) {
+        const deadline = performance.now() + budgetMs;
+        while (this.streamTasks.length > 0) {
+          const { cx, cz } = this.streamTasks[0];
+          if (this.runStreamStep(cx, cz)) this.streamTasks.shift();
+          if (performance.now() >= deadline) break;
+        }
+      }
+
+      // Does one small unit of work toward meshing a chunk; returns true once it is meshed.
+      // Neighbours are decorated first because tree canopies can overhang into this chunk.
+      runStreamStep(cx, cz) {
+        for (let dz = -1; dz <= 1; dz++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (!this.getLoadedChunk(cx + dx, cz + dz)) {
+              this.getOrCreateChunk(cx + dx, cz + dz);
+              return false;
+            }
           }
         }
 
-        // Phase 2: Build trees & landmarks for all chunks in radius that haven't been decorated yet
-        for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
-          for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
-            const cx = pcx + dx;
-            const cz = pcz + dz;
-            const key = `${cx},${cz}`;
+        for (let dz = -1; dz <= 1; dz++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const key = `${cx + dx},${cz + dz}`;
             if (!this.decoratedChunks.has(key)) {
               this.decoratedChunks.add(key);
-              this.buildTreesAndLandmarks(cx, cz);
+              this.buildTreesAndLandmarks(cx + dx, cz + dz);
+              return false;
             }
           }
         }
 
-        // Phase 3: Enqueue chunks that need meshes; build order sorted by distance to player
-        for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
-          for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
-            const cx = pcx + dx;
-            const cz = pcz + dz;
-            const chunk = this.getOrCreateChunk(cx, cz);
-            if (!chunk.mesh && !this.chunkMeshQueue.includes(chunk)) {
-              this.chunkMeshQueue.push(chunk);
-            }
-          }
-        }
-
-        this.chunkMeshQueue.sort((a, b) => {
-          const da = Math.hypot(a.cx - pcx, a.cz - pcz);
-          const db = Math.hypot(b.cx - pcx, b.cz - pcz);
-          return da - db;
-        });
+        const chunk = this.getOrCreateChunk(cx, cz);
+        if (!chunk.mesh) this.buildChunkMesh(chunk);
+        return true;
       }
     }
 
@@ -3047,6 +3096,7 @@
 
         this.treeLanternPointLights = [];
         this.currentLanternInt = 0.05;
+        this.lastLanternRefresh = 0;
 
         this.isDebugOverlayVisible = false;
         this.frameCount = 0;
@@ -3076,11 +3126,17 @@
 
         this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 400);
 
-        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        // MSAA adds little on high-DPI screens but costs a lot of GPU time there.
+        this.renderer = new THREE.WebGLRenderer({
+          antialias: window.devicePixelRatio < 1.5,
+          powerPreference: 'high-performance'
+        });
+        this.renderScale = Math.min(window.devicePixelRatio, 1.5);
+        this.lowFpsReadings = 0;
+        this.renderer.setPixelRatio(this.renderScale);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.viewport.appendChild(this.renderer.domElement);
       }
 
@@ -3168,16 +3224,17 @@
 
         const targetSpawnX = -2;
         const targetSpawnZ = 5;
-        this.world.updateAround(targetSpawnX, targetSpawnZ, 3);
 
-        // Pre-mesh immediate chunks so player has ground beneath feet on start
-        while (this.world.chunkMeshQueue.length > 0) {
-          const chunk = this.world.chunkMeshQueue.shift();
-          this.world.buildChunkMesh(chunk);
-        }
+        // Build only the ground around the player up front so the page opens quickly.
+        // The rest of the view distance streams in across the following frames.
+        this.world.updateAround(targetSpawnX, targetSpawnZ, 1);
 
         const spawn = this.findSpawnPosition();
         this.spawnPoint = { ...spawn };
+
+        this.world.scheduleAround(spawn.x, spawn.z, 3);
+        this.lastChunkX = Math.floor(spawn.x / CHUNK_SIZE);
+        this.lastChunkZ = Math.floor(spawn.z / CHUNK_SIZE);
 
         this.player.pos.set(spawn.x, spawn.y, spawn.z);
         this.player.vel.set(0, 0, 0);
@@ -3252,15 +3309,52 @@
         this.setTimeOfDay('day', false);
       }
 
+      // A fixed pool of lights follows the nearest lanterns. Every light adds cost to every pixel,
+      // and changing the light count recompiles all shaders, so the pool size never changes.
       setupTreeLanternLights() {
-        this.treeLanternPointLights.forEach(l => this.scene.remove(l));
-        this.treeLanternPointLights = [];
+        if (this.treeLanternPointLights.length === 0) {
+          for (let i = 0; i < MAX_LANTERN_LIGHTS; i++) {
+            const pLight = new THREE.PointLight(0xffa33b, 0, 14);
+            this.scene.add(pLight);
+            this.treeLanternPointLights.push(pLight);
+          }
+        }
+        this.refreshLanternLights(this.player.pos.x, this.player.pos.z);
+      }
 
-        this.world.treeLanterns.forEach(tPos => {
-          const pLight = new THREE.PointLight(0xffa33b, 0.05, 14);
-          pLight.position.set(tPos.x + 0.5, tPos.y + 0.5, tPos.z + 0.5);
-          this.scene.add(pLight);
-          this.treeLanternPointLights.push(pLight);
+      refreshLanternLights(x, z) {
+        const pool = this.treeLanternPointLights;
+        const nearest = [];
+        const consider = (pos, isPlaced) => {
+          const dx = pos.x - x;
+          const dz = pos.z - z;
+          // Placed lanterns are much brighter, so they keep their light from twice as far away.
+          const score = (dx * dx + dz * dz) * (isPlaced ? 0.25 : 1);
+          if (nearest.length === pool.length && score >= nearest[nearest.length - 1].score) return;
+          let i = nearest.length;
+          while (i > 0 && nearest[i - 1].score > score) i--;
+          nearest.splice(i, 0, { pos, isPlaced, score });
+          if (nearest.length > pool.length) nearest.pop();
+        };
+        this.world.treeLanterns.forEach(pos => consider(pos, false));
+        this.world.placedLanterns.forEach(pos => consider(pos, true));
+
+        pool.forEach((light, i) => {
+          const entry = nearest[i];
+          light.userData.active = !!entry;
+          if (!entry) return;
+          light.userData.placed = entry.isPlaced;
+          light.position.set(entry.pos.x + 0.5, entry.pos.y + 0.5, entry.pos.z + 0.5);
+          light.color.setHex(entry.isPlaced ? 0xffa726 : 0xffa33b);
+          light.distance = entry.isPlaced ? 18 : 14;
+        });
+        this.applyLanternIntensity();
+      }
+
+      applyLanternIntensity() {
+        this.treeLanternPointLights.forEach(l => {
+          if (!l.userData.active) l.intensity = 0;
+          else l.intensity = l.userData.placed ? 2.2 : this.currentLanternInt;
         });
       }
 
@@ -3328,7 +3422,7 @@
             this.world.leafWindUniforms.uSunsetGlow.value = sunsetGlow;
           }
           this.currentLanternInt = lanternInt;
-          this.treeLanternPointLights.forEach(l => { l.intensity = lanternInt; });
+          this.applyLanternIntensity();
         }
       }
 
@@ -3349,9 +3443,7 @@
         }
 
         this.currentLanternInt = THREE.MathUtils.lerp(this.currentLanternInt, this.targetLanternInt, rate);
-        this.treeLanternPointLights.forEach(l => {
-          l.intensity = this.currentLanternInt;
-        });
+        this.applyLanternIntensity();
       }
 
       initHotbarUI() {
@@ -3521,7 +3613,8 @@
         document.getElementById('btn-reset-world').addEventListener('click', () => {
           if (confirm('Đặt lại toàn bộ thế giới về nguyên bản?')) {
             this.world.resetWorld();
-            this.world.updateAround(this.player.pos.x, this.player.pos.z, 3);
+            this.world.updateAround(this.player.pos.x, this.player.pos.z, 1);
+            this.world.scheduleAround(this.player.pos.x, this.player.pos.z, 3);
             this.setupTreeLanternLights();
             this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
             this.showToast('Đã làm mới thế giới!');
@@ -4577,11 +4670,8 @@
           for (let rx = -range; rx <= range; rx += 2) {
             const bx = Math.floor(px + rx);
             const bz = Math.floor(pz + rz);
-            let b = BLOCK_DEFS.AIR;
-            for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
-              const bl = this.world.getBlock(bx, y, bz);
-              if (bl !== BLOCK_DEFS.AIR) { b = bl; break; }
-            }
+            const b = this.world.getLoadedTopBlock(bx, bz);
+            if (b === null) continue;
 
             if (b === BLOCK_DEFS.WATER) ctx.fillStyle = '#0288d1';
             else if (b === BLOCK_DEFS.GRASS) ctx.fillStyle = '#65ab27';
@@ -4653,15 +4743,16 @@
         if (pcx !== this.lastChunkX || pcz !== this.lastChunkZ) {
           this.lastChunkX = pcx;
           this.lastChunkZ = pcz;
-          this.world.updateAround(streamX, streamZ, this.isCinematicTour ? 3 : 2);
+          this.world.scheduleAround(streamX, streamZ, this.isCinematicTour ? 3 : 2);
         }
 
-        // Spread chunk meshing across frames: build at most 1 chunk per frame
-        if (this.world.chunkMeshQueue.length > 0) {
-          const nextChunk = this.world.chunkMeshQueue.shift();
-          if (nextChunk && !nextChunk.mesh) {
-            this.world.buildChunkMesh(nextChunk);
-          }
+        // Terrain, trees and meshes share a per-frame time budget so walking never hitches
+        this.world.processStreamTasks(STREAM_BUDGET_MS);
+
+        const lanternNow = performance.now();
+        if (lanternNow - this.lastLanternRefresh >= LANTERN_REFRESH_MS) {
+          this.lastLanternRefresh = lanternNow;
+          this.refreshLanternLights(streamX, streamZ);
         }
 
         // 8. Petal Particle Flutter
@@ -4686,6 +4777,7 @@
           this.currentFps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
           this.frameCount = 0;
           this.lastFpsUpdate = now;
+          this.adaptRenderScale();
 
           if (this.isDebugOverlayVisible) {
             this.updateDebugOverlay();
@@ -4693,6 +4785,18 @@
         }
 
         this.renderer.render(this.scene, this.camera);
+      }
+
+      // Weak GPUs: lower the render resolution after ~2s of sustained low FPS.
+      // Never raises it again, which avoids flickering between quality levels.
+      adaptRenderScale() {
+        if (this.world.streamTasks.length > 0) return; // loading dips are expected
+        this.lowFpsReadings = this.currentFps < LOW_FPS_THRESHOLD ? this.lowFpsReadings + 1 : 0;
+        if (this.lowFpsReadings < LOW_FPS_READINGS || this.renderScale <= MIN_RENDER_SCALE) return;
+
+        this.lowFpsReadings = 0;
+        this.renderScale = Math.max(MIN_RENDER_SCALE, this.renderScale - 0.25);
+        this.renderer.setPixelRatio(this.renderScale);
       }
 
       updateDebugOverlay() {
