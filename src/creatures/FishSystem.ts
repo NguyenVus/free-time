@@ -178,7 +178,8 @@ export class FishSystem {
         if (!m.placed || (this.frame + m.index) % FISH_BED_REFRESH_FRAMES === 0) {
           m.bed = world.getTerrainHeight(Math.floor(x), Math.floor(z)) + 1;
         }
-        const lowest = m.bed + FISH_ABOVE_BED - 1;
+        // Capped at the surface: a fish crossing a very shallow spot must not rise out of the water
+        const lowest = Math.min(FISH_SURFACE_Y, m.bed + FISH_ABOVE_BED - 1);
         const depth = Math.max(0, Math.min(1, school.depth + m.offsetDepth));
         const y = lowest + (FISH_SURFACE_Y - lowest) * depth;
 
