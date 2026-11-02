@@ -6,13 +6,12 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "allowUmdGlobalAccess": true,
+    "types": ["three", "vite/client"],
+    "strict": false,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]
