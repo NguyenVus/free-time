@@ -1098,6 +1098,7 @@
         this.lanternLights = new Map();
         this.modifiedBlocks = new Map();
         this.structureBlocks = new Map();
+        this.decoratedChunks = new Set();
 
         this.lakeCenter = { x: -14, z: 12 };
 
@@ -1105,7 +1106,15 @@
         this.loadSavedWorld();
       }
 
+      isCollidable(b) {
+        return b !== BLOCK_DEFS.AIR && b !== BLOCK_DEFS.WATER;
+      }
+
       isSolid(b) {
+        return this.isCollidable(b);
+      }
+
+      isOpaque(b) {
         return b === BLOCK_DEFS.GRASS ||
                b === BLOCK_DEFS.DIRT ||
                b === BLOCK_DEFS.STONE ||
@@ -1114,7 +1123,8 @@
                b === BLOCK_DEFS.WOOD_PLANKS ||
                b === BLOCK_DEFS.TORII_RED ||
                b === BLOCK_DEFS.ROOF_SLATE ||
-               b === BLOCK_DEFS.CHERRY_HEARTWOOD;
+               b === BLOCK_DEFS.CHERRY_HEARTWOOD ||
+               b === BLOCK_DEFS.LANTERN;
       }
 
       initMaterials() {
@@ -1220,6 +1230,7 @@
         });
         this.chunks.clear();
         this.structureBlocks.clear();
+        this.decoratedChunks.clear();
         this.lanternLights.forEach(light => this.scene.remove(light));
         this.lanternLights.clear();
       }
@@ -1510,13 +1521,11 @@
                 let shouldRender = false;
                 if (b === BLOCK_DEFS.WATER) {
                   shouldRender = (neighbor === BLOCK_DEFS.AIR);
-                } else if (this.isSolid(b)) {
-                  // Face culling ONLY hides faces between two solid blocks!
-                  shouldRender = !this.isSolid(neighbor);
+                } else if (this.isOpaque(b)) {
+                  // Face culling hides faces between two opaque solid blocks
+                  shouldRender = !this.isOpaque(neighbor);
                 } else if (b === BLOCK_DEFS.GLASS) {
                   shouldRender = (neighbor !== BLOCK_DEFS.GLASS);
-                } else if (b === BLOCK_DEFS.LANTERN) {
-                  shouldRender = (neighbor !== BLOCK_DEFS.LANTERN);
                 } else {
                   // Leaves and other semi-transparent blocks
                   shouldRender = (neighbor !== b);
@@ -1651,18 +1660,29 @@
         const pcz = Math.floor(playerZ / CHUNK_SIZE);
         let newMeshes = 0;
 
+        // Phase 1: Ensure terrain exists for radius + 1 margin so trees and boundary face checks have ground
+        for (let dz = -radiusChunks - 1; dz <= radiusChunks + 1; dz++) {
+          for (let dx = -radiusChunks - 1; dx <= radiusChunks + 1; dx++) {
+            const cx = pcx + dx;
+            const cz = pcz + dz;
+            this.getOrCreateChunk(cx, cz);
+          }
+        }
+
+        // Phase 2: Build trees & landmarks for all chunks in radius that haven't been decorated yet
         for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
           for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
             const cx = pcx + dx;
             const cz = pcz + dz;
             const key = `${cx},${cz}`;
-            if (!this.chunks.has(key)) {
-              this.getOrCreateChunk(cx, cz);
+            if (!this.decoratedChunks.has(key)) {
+              this.decoratedChunks.add(key);
               this.buildTreesAndLandmarks(cx, cz);
             }
           }
         }
 
+        // Phase 3: Build meshes for chunks in radius that don't have meshes yet
         for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
           for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
             const cx = pcx + dx;
@@ -2232,26 +2252,24 @@
           const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
           const wx = Math.round(pathCurve);
 
-          let highestY = -1;
-          let highestBlock = BLOCK_DEFS.AIR;
+          // Find the stone path at surface ground level
+          let stoneY = -1;
           for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
             const b = this.world.getBlock(wx, y, wz);
-            if (this.world.isSolid(b) && b !== BLOCK_DEFS.WATER) {
-              highestY = y;
-              highestBlock = b;
-              break;
+            if (b === BLOCK_DEFS.STONE) {
+              const above1 = this.world.getBlock(wx, y + 1, wz);
+              const above2 = this.world.getBlock(wx, y + 2, wz);
+              if (above1 === BLOCK_DEFS.AIR && above2 === BLOCK_DEFS.AIR) {
+                stoneY = y;
+                break;
+              }
             }
           }
 
-          if (highestY > 0) {
-            const above1 = this.world.getBlock(wx, highestY + 1, wz);
-            const above2 = this.world.getBlock(wx, highestY + 2, wz);
+          if (stoneY > 0) {
             const lakeDist = Math.hypot(wx - this.world.lakeCenter.x, wz - this.world.lakeCenter.z);
-
-            if (above1 === BLOCK_DEFS.AIR && above2 === BLOCK_DEFS.AIR) {
-              const score = (highestBlock === BLOCK_DEFS.STONE ? 100 : 50) - Math.abs(lakeDist - 15);
-              candidates.push({ x: wx + 0.5, y: highestY + 1.0, z: wz + 0.5, block: highestBlock, score });
-            }
+            const score = 100 - Math.abs(lakeDist - 15);
+            candidates.push({ x: wx + 0.5, y: stoneY + 1.0, z: wz + 0.5, block: BLOCK_DEFS.STONE, score });
           }
         }
 
@@ -2260,7 +2278,7 @@
           return candidates[0];
         }
 
-        return { x: -2.5, y: 13.0, z: 5.5, block: BLOCK_DEFS.STONE };
+        return { x: 1.5, y: 12.0, z: 10.5, block: BLOCK_DEFS.STONE };
       }
 
       teleportToSafeGround() {
@@ -2279,7 +2297,7 @@
 
               for (let y = CHUNK_HEIGHT - 2; y >= 2; y--) {
                 const b = this.world.getBlock(wx, y, wz);
-                if (this.world.isSolid(b) && b !== BLOCK_DEFS.WATER) {
+                if (this.world.isCollidable(b)) {
                   const above1 = this.world.getBlock(wx, y + 1, wz);
                   const above2 = this.world.getBlock(wx, y + 2, wz);
                   if (above1 === BLOCK_DEFS.AIR && above2 === BLOCK_DEFS.AIR) {
@@ -2300,7 +2318,7 @@
         }
 
         if (!bestSpot) {
-          bestSpot = this.spawnPoint || { x: -2.5, y: 13.0, z: 5.5 };
+          bestSpot = this.spawnPoint || { x: 1.5, y: 12.0, z: 10.5 };
         }
 
         this.player.pos.set(bestSpot.x, bestSpot.y, bestSpot.z);
@@ -2582,6 +2600,7 @@
             this.isDebugOverlayVisible = !this.isDebugOverlayVisible;
             const dbg = document.getElementById('debug-overlay');
             if (dbg) dbg.classList.toggle('hidden', !this.isDebugOverlayVisible);
+            if (this.isDebugOverlayVisible) this.updateDebugOverlay();
             this.showToast(this.isDebugOverlayVisible ? 'Bật Debug Overlay (F3)' : 'Tắt Debug Overlay');
           } else if (e.code === 'Escape') {
             this.togglePauseMenu();
@@ -2663,9 +2682,9 @@
           -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
         ).normalize();
 
-        let px = this.player.pos.x;
-        let py = this.player.pos.y + this.player.height * 0.9;
-        let pz = this.player.pos.z;
+        let px = this.camera.position.x;
+        let py = this.camera.position.y;
+        let pz = this.camera.position.z;
 
         const step = 0.08;
         let traversed = 0;
@@ -2677,7 +2696,7 @@
           const bz = Math.floor(pz);
           const b = this.world.getBlock(bx, by, bz);
 
-          if (b !== BLOCK_DEFS.AIR && b !== BLOCK_DEFS.WATER) {
+          if (this.world.isCollidable(b)) {
             return {
               x: bx, y: by, z: bz,
               blockId: b,
@@ -2897,18 +2916,18 @@
           if (p.vel.y < 0) {
             // Find highest solid block top surface under player footprint
             let floorY = -1;
-            const minX = Math.floor(p.pos.x - r + 0.05);
-            const maxX = Math.floor(p.pos.x + r - 0.05);
-            const minZ = Math.floor(p.pos.z - r + 0.05);
-            const maxZ = Math.floor(p.pos.z + r - 0.05);
-            const testYMin = Math.floor(nextY);
+            const minX = Math.floor(p.pos.x - r + 0.001);
+            const maxX = Math.floor(p.pos.x + r - 0.001);
+            const minZ = Math.floor(p.pos.z - r + 0.001);
+            const maxZ = Math.floor(p.pos.z + r - 0.001);
+            const testYMin = Math.floor(nextY + 0.001);
             const testYMax = Math.floor(p.pos.y);
 
             for (let bx = minX; bx <= maxX; bx++) {
               for (let bz = minZ; bz <= maxZ; bz++) {
                 for (let by = testYMax; by >= testYMin; by--) {
                   const b = this.world.getBlock(bx, by, bz);
-                  if (this.world.isSolid(b)) {
+                  if (this.world.isCollidable(b)) {
                     floorY = Math.max(floorY, by + 1.0);
                   }
                 }
@@ -2917,9 +2936,11 @@
 
             if (floorY >= 0) {
               p.pos.y = floorY;
+              p.vel.y = 0;
+              p.isGrounded = true;
+            } else {
+              p.pos.y = nextY;
             }
-            p.vel.y = 0;
-            p.isGrounded = true;
           } else if (p.vel.y > 0) {
             p.vel.y = 0;
           }
@@ -2950,7 +2971,7 @@
           for (let by = minY; by <= maxY; by++) {
             for (let bz = minZ; bz <= maxZ; bz++) {
               const b = this.world.getBlock(bx, by, bz);
-              if (this.world.isSolid(b)) {
+              if (this.world.isCollidable(b)) {
                 return true;
               }
             }
@@ -3084,23 +3105,7 @@
           this.lastFpsUpdate = now;
 
           if (this.isDebugOverlayVisible) {
-            const p = this.player;
-            document.getElementById('dbg-pos').textContent =
-              `${p.pos.x.toFixed(2)} / ${p.pos.y.toFixed(2)} / ${p.pos.z.toFixed(2)}`;
-
-            const bx = Math.floor(p.pos.x);
-            const by = Math.floor(p.pos.y - 0.1);
-            const bz = Math.floor(p.pos.z);
-            const underBlock = this.world.getBlock(bx, by, bz);
-            const blockName = BLOCK_NAMES[underBlock] || `ID: ${underBlock}`;
-            document.getElementById('dbg-block').textContent = `${blockName} [${bx}, ${by}, ${bz}]`;
-
-            const stats = this.world.getStats();
-            document.getElementById('dbg-chunks').textContent = `${stats.chunks}`;
-            document.getElementById('dbg-faces').textContent = `${stats.totalFaces.toLocaleString()}`;
-            document.getElementById('dbg-fps').textContent = `${this.currentFps}`;
-            document.getElementById('dbg-fly').textContent = this.isFlyMode ? 'ON' : 'OFF';
-            document.getElementById('dbg-grounded').textContent = p.isGrounded ? 'YES' : 'NO';
+            this.updateDebugOverlay();
           }
         }
 
@@ -3115,6 +3120,37 @@
         this.petals.update(dt, this.player.pos);
         this.updateMinimap();
         this.renderer.render(this.scene, this.camera);
+      }
+
+      updateDebugOverlay() {
+        if (!this.isDebugOverlayVisible) return;
+        const p = this.player;
+        const dbgPos = document.getElementById('dbg-pos');
+        if (dbgPos) {
+          dbgPos.textContent = `${p.pos.x.toFixed(2)} / ${p.pos.y.toFixed(2)} / ${p.pos.z.toFixed(2)}`;
+        }
+
+        const bx = Math.floor(p.pos.x);
+        const by = Math.floor(p.pos.y - 0.1);
+        const bz = Math.floor(p.pos.z);
+        const underBlock = this.world.getBlock(bx, by, bz);
+        const blockName = BLOCK_NAMES[underBlock] || `ID: ${underBlock}`;
+        const dbgBlock = document.getElementById('dbg-block');
+        if (dbgBlock) {
+          dbgBlock.textContent = `${blockName} [${bx}, ${by}, ${bz}]`;
+        }
+
+        const stats = this.world.getStats();
+        const dbgChunks = document.getElementById('dbg-chunks');
+        if (dbgChunks) dbgChunks.textContent = `${stats.chunks}`;
+        const dbgFaces = document.getElementById('dbg-faces');
+        if (dbgFaces) dbgFaces.textContent = `${stats.totalFaces.toLocaleString()}`;
+        const dbgFps = document.getElementById('dbg-fps');
+        if (dbgFps) dbgFps.textContent = `${this.currentFps}`;
+        const dbgFly = document.getElementById('dbg-fly');
+        if (dbgFly) dbgFly.textContent = this.isFlyMode ? 'ON' : 'OFF';
+        const dbgGrounded = document.getElementById('dbg-grounded');
+        if (dbgGrounded) dbgGrounded.textContent = p.isGrounded ? 'YES' : 'NO';
       }
     }
 
