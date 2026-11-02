@@ -70,7 +70,7 @@
       z-index: 2;
       background: radial-gradient(circle at 75% 25%, rgba(255, 235, 210, 0.24) 0%, rgba(254, 215, 226, 0.08) 50%, transparent 80%);
       mix-blend-mode: screen;
-      opacity: 0.9;
+      opacity: 0.35;
       transition: opacity 2.0s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
@@ -1144,8 +1144,8 @@
         return { texture: tex, canvas: c };
       }
 
-      // Dense blossom clusters with small cut-out gaps, so a canopy reads as flowers rather than
-      // flat coloured cubes. Mipmaps stop this fine detail from shimmering in the distance.
+      // Dense blossom clusters, so a canopy reads as flowers rather than flat coloured cubes.
+      // Mipmaps stop this fine detail from shimmering in the distance.
       static createBlossomTexture({ base, petals, highlight, center }) {
         const size = 32;
         const c = document.createElement('canvas');
@@ -1174,10 +1174,6 @@
           pixel(bx, by);
         }
 
-        for (let i = 0; i < 18; i++) {
-          ctx.clearRect(Math.floor(Math.random() * size), Math.floor(Math.random() * size), 1, 1);
-        }
-
         const tex = new THREE.CanvasTexture(c);
         tex.magFilter = THREE.NearestFilter;
         tex.minFilter = THREE.LinearMipmapLinearFilter;
@@ -1185,12 +1181,58 @@
         return { texture: tex, canvas: c };
       }
 
+      // Left half: a five-petal flower seen from above, nearly white so vertex colours can tint it.
+      // Right half: plain white, used for stems. Built as raw pixels so the transparent area keeps
+      // the petal colour; a canvas would turn it black and leave dark fringes on distant flowers.
+      static createFlowerTexture() {
+        const width = 64;
+        const height = 32;
+        const data = new Uint8Array(width * height * 4);
+        const center = 15.5;
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            let rgb = [255, 240, 245];
+            let alpha = 255;
+
+            if (x < height) {
+              const dx = x - center;
+              const dy = y - center;
+              const r = Math.hypot(dx, dy);
+              const petalEdge = 15 * (0.5 + 0.5 * Math.pow(Math.abs(Math.cos(2.5 * Math.atan2(dy, dx))), 0.7));
+              alpha = r <= petalEdge ? 255 : 0;
+              if (r < 2.5) rgb = [255, 214, 79];
+              else if (r < 5.5) rgb = [214, 110, 140];
+              else if (r > petalEdge - 2) rgb = [255, 255, 255];
+              else if ((x + y * 3) % 7 === 0) rgb = [255, 214, 226];
+            } else {
+              rgb = [255, 255, 255];
+            }
+
+            data[i] = rgb[0];
+            data[i + 1] = rgb[1];
+            data[i + 2] = rgb[2];
+            data[i + 3] = alpha;
+          }
+        }
+
+        const tex = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.generateMipmaps = true;
+        tex.needsUpdate = true;
+        return { texture: tex };
+      }
+
       static generateAll() {
         const atlas = {};
 
+        atlas['flower'] = this.createFlowerTexture();
+
         // 1. Grass Top: Fresh vibrant green with micro variation
         atlas['grass_top'] = this.create16x16(ctx => {
-          const cols = ['#72ba2e', '#65ab27', '#7fc738', '#5c9e22', '#6ebd2b'];
+          const cols = ['#4f9a2a', '#459024', '#57a52f', '#3f8520', '#4c9c28'];
           for (let y = 0; y < 16; y++) {
             for (let x = 0; x < 16; x++) {
               ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
@@ -1208,7 +1250,7 @@
               ctx.fillRect(x, y, 1, 1);
             }
           }
-          const gCols = ['#72ba2e', '#65ab27', '#7fc738'];
+          const gCols = ['#4f9a2a', '#459024', '#57a52f'];
           for (let x = 0; x < 16; x++) {
             const h = 3 + Math.floor(Math.sin(x * 1.3) * 1.5 + Math.random() * 1.8);
             for (let y = 0; y < h; y++) {
@@ -1310,14 +1352,14 @@
 
         // 9-13. Sakura blossom canopies, from palest to deepest pink
         atlas['leaves_white'] = this.createBlossomTexture({
-          base: ['#f9c6d6', '#f6b6ca', '#fcd6e1'],
-          petals: ['#fff0f5', '#ffe3ec', '#ffffff'],
+          base: ['#f7a8c4', '#f498ba', '#fab4cc'],
+          petals: ['#ffdbe7', '#ffcfe0', '#fff0f5'],
           highlight: '#ffffff',
-          center: '#f06595'
+          center: '#e64980'
         });
         atlas['leaves_light'] = this.createBlossomTexture({
-          base: ['#f490b4', '#ec80a8', '#f8a6c4'],
-          petals: ['#ffc4d6', '#ffd6e3', '#ffb3ca'],
+          base: ['#f27aa8', '#ea6a9c', '#f68fb6'],
+          petals: ['#ffb3cd', '#ffc2d6', '#ffa4c4'],
           highlight: '#fff1f5',
           center: '#d6336c'
         });
@@ -1427,7 +1469,7 @@
 
         // 20. Ground Petal Carpet Top (Grass speckled with fallen cherry petals)
         atlas['carpet_top'] = this.create16x16(ctx => {
-          const gCols = ['#72ba2e', '#65ab27', '#7fc738', '#5c9e22', '#6ebd2b'];
+          const gCols = ['#4f9a2a', '#459024', '#57a52f', '#3f8520', '#4c9c28'];
           for (let y = 0; y < 16; y++) {
             for (let x = 0; x < 16; x++) {
               ctx.fillStyle = gCols[Math.floor(Math.random() * gCols.length)];
@@ -1444,8 +1486,6 @@
             ctx.fillStyle = pCols[Math.floor(Math.random() * pCols.length)];
             ctx.fillRect(px, py, 1, 1);
           });
-          ctx.fillStyle = '#ffffff'; ctx.fillRect(6, 6, 2, 2);
-          ctx.fillStyle = '#ff85a1'; ctx.fillRect(5, 6, 1, 2); ctx.fillRect(8, 6, 1, 2);
         });
 
         // 21. Ground Pink Petals Floating Quad (Scattered on grass floor)
@@ -1575,6 +1615,15 @@
     const CHUNK_SIZE = 16;
     const CHUNK_HEIGHT = 32;
     const STREAM_BUDGET_MS = 4;
+    const FLOWER_MATERIAL_KEY = 'flower';
+    const FLOWER_TINTS = [
+      [1.0, 0.55, 0.72],
+      [1.0, 0.42, 0.62],
+      [1.0, 0.8, 0.88],
+      [0.95, 0.35, 0.55]
+    ];
+    const FLOWER_STEM_COLOR = [0.22, 0.5, 0.16];
+    const FLOWER_STEM_WIDTH = 0.1;
     const TOUCH_LOOK_SPEED = 0.005;
     const IS_TOUCH_DEVICE = window.matchMedia('(pointer: coarse)').matches;
 
@@ -1586,6 +1635,7 @@
           lanternLights: 2,
           flyingPetals: 500,
           groundPetals: 400,
+          flowerDensity: 0.09,
           viewRadius: 2,
           hiddenMargin: 1,
           fogDensity: 0.02 // hides the shorter view distance
@@ -1596,6 +1646,7 @@
           lanternLights: 4,
           flyingPetals: 1400,
           groundPetals: 900,
+          flowerDensity: 0.2, // share of grass columns with a flower
           viewRadius: 3,
           hiddenMargin: 2,
           fogDensity: 0.014
@@ -1653,11 +1704,9 @@
       createLeafMaterial(textureKey) {
         const mat = new THREE.MeshStandardMaterial({
           map: this.textures[textureKey].texture,
-          // Sun + ambient light reach about 2x here, which would clip pink to white without this.
-          color: new THREE.Color(0.62, 0.62, 0.62),
-          alphaTest: 0.5,
+          // Sun + ambient light reach about 1.8x here, which would clip pink to white without this.
+          color: new THREE.Color(0.68, 0.68, 0.68),
           roughness: 0.65,
-          side: THREE.DoubleSide,
           vertexColors: true
         });
 
@@ -1743,7 +1792,15 @@
           }),
           [BLOCK_DEFS.TORII_RED]: new THREE.MeshStandardMaterial({ map: this.textures['torii_red'].texture, roughness: 0.7, vertexColors: true }),
           [BLOCK_DEFS.ROOF_SLATE]: new THREE.MeshStandardMaterial({ map: this.textures['roof_slate'].texture, roughness: 0.8, vertexColors: true }),
-          [BLOCK_DEFS.CHERRY_HEARTWOOD]: new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true })
+          [BLOCK_DEFS.CHERRY_HEARTWOOD]: new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true }),
+          [FLOWER_MATERIAL_KEY]: new THREE.MeshStandardMaterial({
+            map: this.textures['flower'].texture,
+            color: new THREE.Color(0.68, 0.68, 0.68),
+            alphaTest: 0.4,
+            roughness: 0.7,
+            side: THREE.DoubleSide,
+            vertexColors: true
+          })
         };
       }
 
@@ -2249,7 +2306,7 @@
                 );
                 const tone = (cdy / ry) * 0.6 + patch * 0.45 + (leafRand - 0.5) * 0.2;
                 let leafType;
-                if (tone > 0.3) leafType = BLOCK_DEFS.LEAVES_WHITE;
+                if (tone > 0.45) leafType = BLOCK_DEFS.LEAVES_WHITE;
                 else if (tone > -0.15) leafType = BLOCK_DEFS.LEAVES_LIGHT;
                 else if (tone > -0.45) leafType = BLOCK_DEFS.LEAVES_SOFT;
                 else if (tone > -0.8) leafType = BLOCK_DEFS.LEAVES_DEEP;
@@ -2404,6 +2461,8 @@
           }
         }
 
+        this.addFlowers(chunk, blockBuckets);
+
         const allPos = [];
         const allNorm = [];
         const allUV = [];
@@ -2449,6 +2508,87 @@
         mesh.receiveShadow = true;
         this.scene.add(mesh);
         chunk.mesh = mesh;
+      }
+
+      // Flowers are part of the chunk mesh, not blocks: they have no collision, stay in the same
+      // spots across rebuilds, and vanish by themselves when their grass is dug or covered.
+      addFlowers(chunk, blockBuckets) {
+        const startX = chunk.cx * CHUNK_SIZE;
+        const startZ = chunk.cz * CHUNK_SIZE;
+        const layer = CHUNK_SIZE * CHUNK_SIZE;
+        const bucket = {
+          blockId: FLOWER_MATERIAL_KEY,
+          subMatIdx: 0,
+          positions: [],
+          normals: [],
+          uvs: [],
+          colors: []
+        };
+
+        const pushQuad = (corners, normal, uv, color) => {
+          for (const i of [0, 1, 2, 0, 2, 3]) {
+            bucket.positions.push(corners[i][0], corners[i][1], corners[i][2]);
+            bucket.normals.push(normal[0], normal[1], normal[2]);
+            bucket.uvs.push(uv[i][0], uv[i][1]);
+            bucket.colors.push(color[0], color[1], color[2]);
+          }
+        };
+        const stemUV = [[0.75, 0.5], [0.75, 0.5], [0.75, 0.5], [0.75, 0.5]];
+        const headUV = [[0, 0], [0.5, 0], [0.5, 1], [0, 1]];
+
+        for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+          for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+            const wx = startX + lx;
+            const wz = startZ + lz;
+            const random = (salt) => {
+              const v = Math.sin(wx * 12.9898 + wz * 78.233 + salt * 37.719) * 43758.5453;
+              return v - Math.floor(v);
+            };
+            if (random(0) >= QUALITY.flowerDensity) continue;
+
+            let groundY = -1;
+            for (let y = CHUNK_HEIGHT - 2; y >= 0; y--) {
+              const index = lx + lz * CHUNK_SIZE + y * layer;
+              const b = chunk.blocks[index];
+              if ((b === BLOCK_DEFS.GRASS || b === BLOCK_DEFS.GROUND_PETALS_CARPET) &&
+                  chunk.blocks[index + layer] === BLOCK_DEFS.AIR) {
+                groundY = y + 1;
+                break;
+              }
+            }
+            if (groundY < 0) continue;
+
+            const x = wx + 0.5 + (random(1) - 0.5) * 0.6;
+            const z = wz + 0.5 + (random(2) - 0.5) * 0.6;
+            const topY = groundY + 0.45 + random(3) * 0.5;
+            const half = 0.3 + random(4) * 0.2;
+            const angle = random(5) * Math.PI * 2;
+            const tiltX = (random(6) - 0.5) * 0.3;
+            const tiltZ = (random(7) - 0.5) * 0.3;
+            const tint = FLOWER_TINTS[Math.floor(random(8) * FLOWER_TINTS.length)];
+            const w = FLOWER_STEM_WIDTH / 2;
+
+            pushQuad(
+              [[x - w, groundY, z], [x + w, groundY, z], [x + w, topY, z], [x - w, topY, z]],
+              [0, 0, 1], stemUV, FLOWER_STEM_COLOR
+            );
+            pushQuad(
+              [[x, groundY, z - w], [x, groundY, z + w], [x, topY, z + w], [x, topY, z - w]],
+              [1, 0, 0], stemUV, FLOWER_STEM_COLOR
+            );
+
+            const cos = Math.cos(angle) * half;
+            const sin = Math.sin(angle) * half;
+            const corner = (u, v) => {
+              const dx = u * cos - v * sin;
+              const dz = u * sin + v * cos;
+              return [x + dx, topY + dx * tiltX + dz * tiltZ, z + dz];
+            };
+            pushQuad([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], [0, 1, 0], headUV, tint);
+          }
+        }
+
+        if (bucket.positions.length > 0) blockBuckets[`${FLOWER_MATERIAL_KEY}_0`] = bucket;
       }
 
       getStats() {
@@ -2544,6 +2684,34 @@
     // =========================================================================
     // 5. PROCEDURAL WEB AUDIO API SOUND ENGINE (Zero External Assets)
     // =========================================================================
+    const NOTE_FREQ = {
+      B3: 246.94, C4: 261.63, E4: 329.63, F4: 349.23, A4: 440.0, B4: 493.88, C5: 523.25
+    };
+
+    // "Sakura Sakura", the traditional Japanese folk song (public domain). One [note, beats] per
+    // note; each bar has four beats.
+    const SAKURA_MELODY = [
+      ['A4', 1], ['A4', 1], ['B4', 2],
+      ['A4', 1], ['A4', 1], ['B4', 2],
+      ['A4', 1], ['B4', 1], ['C5', 1], ['B4', 1],
+      ['A4', 1], ['B4', 0.5], ['A4', 0.5], ['F4', 2],
+      ['E4', 1], ['C4', 1], ['E4', 1], ['F4', 1],
+      ['E4', 1], ['E4', 0.5], ['C4', 0.5], ['B3', 2],
+      ['A4', 1], ['B4', 1], ['C5', 1], ['B4', 1],
+      ['A4', 1], ['B4', 0.5], ['A4', 0.5], ['F4', 2],
+      ['E4', 1], ['C4', 1], ['E4', 1], ['F4', 1],
+      ['E4', 1], ['E4', 0.5], ['C4', 0.5], ['B3', 2],
+      ['A4', 1], ['A4', 1], ['B4', 2],
+      ['A4', 1], ['A4', 1], ['B4', 2],
+      ['E4', 1], ['F4', 1], ['B4', 0.5], ['A4', 0.5], ['F4', 1],
+      ['E4', 4]
+    ];
+    const MUSIC_BEAT_SECONDS = 0.95;
+    const MUSIC_SCHEDULE_AHEAD = 1.5;
+    const MUSIC_INTERLUDE_BARS = 8;
+    const INTERLUDE_RHYTHMS = [[1, 1, 2], [2, 2], [1, 1, 1, 1], [0.5, 0.5, 1, 2]];
+    const BASS_ROOTS = [110.0, 82.41]; // A2, E2
+
     class ProceduralAudio {
       constructor() {
         this.ctx = null;
@@ -2551,21 +2719,147 @@
         this.isEnabled = false;
         this.volume = 0.7;
         this.isNight = false;
-        this.kotoNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+        this.musicQueue = [];
+        this.beatInBar = 0;
+        this.barCount = 0;
+        this.playInterludeNext = false;
       }
 
       init() {
         if (this.ctx) return;
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         this.ctx = new AudioCtx();
+        this.ctx.resume(); // iOS creates the context suspended, even inside a tap
 
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
 
+        // iOS suspends audio on interruptions such as calls; the next touch brings it back
+        window.addEventListener('pointerdown', () => {
+          if (this.isEnabled && this.ctx.state !== 'running') this.ctx.resume();
+        });
+
         this.isEnabled = true;
         this.startAmbient();
-        this.startKotoMelody();
+        this.startMusic();
+      }
+
+      createReverb(seconds) {
+        const length = Math.floor(this.ctx.sampleRate * seconds);
+        const impulse = this.ctx.createBuffer(2, length, this.ctx.sampleRate);
+        for (let ch = 0; ch < 2; ch++) {
+          const data = impulse.getChannelData(ch);
+          for (let i = 0; i < length; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, 3);
+          }
+        }
+        const reverb = this.ctx.createConvolver();
+        reverb.buffer = impulse;
+        return reverb;
+      }
+
+      startMusic() {
+        this.musicBus = this.ctx.createGain();
+        this.musicBus.connect(this.masterGain);
+
+        const reverbSend = this.ctx.createGain();
+        reverbSend.gain.value = 0.3;
+        const reverb = this.createReverb(2.4);
+        this.musicBus.connect(reverbSend);
+        reverbSend.connect(reverb);
+        reverb.connect(this.masterGain);
+
+        // Soft open fifth held underneath the melody
+        [110.0, 164.81].forEach(freq => {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          g.gain.value = 0.025;
+          osc.connect(g);
+          g.connect(this.musicBus);
+          osc.start();
+        });
+
+        this.nextNoteTime = this.ctx.currentTime + 0.8;
+        // Notes go on the audio clock in advance, so slow frames or a background tab cannot
+        // make the rhythm stumble.
+        setInterval(() => this.scheduleMusic(), 250);
+        this.scheduleMusic();
+      }
+
+      nextMusicEvent() {
+        if (this.musicQueue.length === 0) {
+          this.musicQueue = this.playInterludeNext ? this.createInterlude() : SAKURA_MELODY.slice();
+          this.playInterludeNext = !this.playInterludeNext;
+        }
+        return this.musicQueue.shift();
+      }
+
+      // A short improvised passage in the same scale, so the loop does not feel repetitive
+      createInterlude() {
+        const scale = Object.keys(NOTE_FREQ);
+        const events = [];
+        let index = 3 + Math.floor(Math.random() * 3);
+        for (let bar = 0; bar < MUSIC_INTERLUDE_BARS; bar++) {
+          const rhythm = INTERLUDE_RHYTHMS[Math.floor(Math.random() * INTERLUDE_RHYTHMS.length)];
+          rhythm.forEach(beats => {
+            index += Math.floor(Math.random() * 5) - 2;
+            index = Math.max(0, Math.min(scale.length - 1, index));
+            events.push([Math.random() < 0.15 ? null : scale[index], beats]);
+          });
+        }
+        return events;
+      }
+
+      scheduleMusic() {
+        if (!this.isEnabled || this.ctx.state !== 'running') return;
+        const now = this.ctx.currentTime;
+        if (this.nextNoteTime < now) this.nextNoteTime = now + 0.1;
+
+        while (this.nextNoteTime < now + MUSIC_SCHEDULE_AHEAD) {
+          if (this.beatInBar === 0) {
+            const root = BASS_ROOTS[this.barCount % BASS_ROOTS.length];
+            this.pluck(root, this.nextNoteTime, 0.55, 3.2);
+            this.pluck(root * 1.5, this.nextNoteTime + 0.09, 0.35, 2.6);
+            this.barCount++;
+          }
+
+          const [note, beats] = this.nextMusicEvent();
+          if (note) this.pluck(NOTE_FREQ[note], this.nextNoteTime, 1.0, 2.8);
+
+          this.nextNoteTime += beats * MUSIC_BEAT_SECONDS;
+          this.beatInBar = (this.beatInBar + beats) % 4;
+        }
+      }
+
+      // Koto-like string: a fast attack, a bright overtone that fades quickly, and a long decay
+      pluck(freq, time, velocity, duration) {
+        const body = this.ctx.createOscillator();
+        const bodyGain = this.ctx.createGain();
+        body.type = 'triangle';
+        body.frequency.value = freq;
+        bodyGain.gain.setValueAtTime(0.0001, time);
+        bodyGain.gain.exponentialRampToValueAtTime(0.26 * velocity, time + 0.005);
+        bodyGain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+        const overtone = this.ctx.createOscillator();
+        const overtoneGain = this.ctx.createGain();
+        overtone.type = 'sine';
+        overtone.frequency.value = freq * 3;
+        overtoneGain.gain.setValueAtTime(0.0001, time);
+        overtoneGain.gain.exponentialRampToValueAtTime(0.07 * velocity, time + 0.004);
+        overtoneGain.gain.exponentialRampToValueAtTime(0.0001, time + 0.3);
+
+        body.connect(bodyGain);
+        overtone.connect(overtoneGain);
+        bodyGain.connect(this.musicBus);
+        overtoneGain.connect(this.musicBus);
+        body.start(time);
+        overtone.start(time);
+        body.stop(time + duration + 0.05);
+        overtone.stop(time + 0.35);
       }
 
       setVolume(val) {
@@ -2619,7 +2913,7 @@
         filter.frequency.setValueAtTime(420, this.ctx.currentTime);
 
         const windGain = this.ctx.createGain();
-        windGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        windGain.gain.setValueAtTime(0.45, this.ctx.currentTime);
 
         whiteNoise.connect(filter);
         filter.connect(windGain);
@@ -2647,33 +2941,6 @@
           setTimeout(playBird, 4000 + Math.random() * 6000);
         };
         setTimeout(playBird, 3000);
-      }
-
-      startKotoMelody() {
-        if (!this.ctx) return;
-        const playNote = () => {
-          if (!this.isEnabled || !this.ctx) {
-            setTimeout(playNote, 4000);
-            return;
-          }
-          const now = this.ctx.currentTime;
-          const noteFreq = this.kotoNotes[Math.floor(Math.random() * this.kotoNotes.length)];
-          const osc = this.ctx.createOscillator();
-          const g = this.ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(noteFreq, now);
-
-          g.gain.setValueAtTime(0.18, now);
-          g.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
-
-          osc.connect(g);
-          g.connect(this.masterGain);
-          osc.start(now);
-          osc.stop(now + 2.3);
-
-          setTimeout(playNote, 3200 + Math.random() * 4500);
-        };
-        setTimeout(playNote, 2000);
       }
 
       playFootstep(blockType) {
@@ -3546,16 +3813,18 @@
         const bloomEl = document.getElementById('bloom-overlay');
 
         if (mode === 'day') {
-          skyCol = 0xffe2ea;
-          fogCol = 0xfcd6df;
+          // A blue sky gives the pink canopies something to contrast against; the warm pink
+          // ambient light keeps faces in shade rosy instead of grey.
+          skyCol = 0x9ad3f5;
+          fogCol = 0xa9daf5;
           sunCol = 0xfff3db;
-          ambCol = 0xffd4de;
-          sunInt = 1.9;
+          ambCol = 0xffc0d4;
+          sunInt = 1.45;
           ffOpacity = 0.0;
           sunsetGlow = 0.0;
           lanternInt = 0.05;
           this.targetSunPos.set(65, 80, 45);
-          if (bloomEl) bloomEl.style.opacity = '0.9';
+          if (bloomEl) bloomEl.style.opacity = '0.35';
         } else if (mode === 'sunset') {
           skyCol = 0xf472b6;
           fogCol = 0xfbcfe8;
@@ -4335,12 +4604,7 @@
         if (!this.checkAABB(nextX, p.pos.y, p.pos.z, r, h)) {
           p.pos.x = nextX;
         } else {
-          if (p.isGrounded && !this.checkAABB(nextX, p.pos.y + 1.02, p.pos.z, r, h)) {
-            p.pos.x = nextX;
-            p.pos.y += 1.0;
-          } else {
-            p.vel.x = 0;
-          }
+          p.vel.x = 0;
         }
 
         // 2. Move horizontally in Z
@@ -4348,12 +4612,7 @@
         if (!this.checkAABB(p.pos.x, p.pos.y, nextZ, r, h)) {
           p.pos.z = nextZ;
         } else {
-          if (p.isGrounded && !this.checkAABB(p.pos.x, p.pos.y + 1.02, nextZ, r, h)) {
-            p.pos.z = nextZ;
-            p.pos.y += 1.0;
-          } else {
-            p.vel.z = 0;
-          }
+          p.vel.z = 0;
         }
 
         // 3. Move vertically in Y with floor snapping
