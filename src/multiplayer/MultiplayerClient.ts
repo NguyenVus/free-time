@@ -32,6 +32,8 @@ export const ANIMAL_MAX_HIT_DAMAGE = 4;
 export const ANIMAL_MAX_HITS_PER_SECOND = 10;
 export const ANIMAL_MAX_HIT_DISTANCE = 60; // an arrow cannot fly further than this
 export const SEEN_EVENTS_LIMIT = 200;
+export const SYNC_DIGEST_INTERVAL_MS = 5000;
+export const SYNC_REPAIR_INTERVAL_MS = 8000;
 export const MULTIPLAYER_MAX_PEERS = 8;
 export const MULTIPLAYER_POSE_INTERVAL_MS = 200;
 export const MULTIPLAYER_HEARTBEAT_MS = 1000;
@@ -87,6 +89,8 @@ export class MultiplayerClient {
   declare animalHostId: string | null;
   declare hasAnimalFollowers: boolean;
   declare lastHostCheck: number;
+  declare lastDigestSent: number;
+  declare lastRepair: number;
   declare lastAnimalSnapshot: number;
   declare resendTimer: any;
   declare selfId: any;
@@ -107,6 +111,8 @@ export class MultiplayerClient {
     this.animalHostId = null;
     this.hasAnimalFollowers = false;
     this.lastHostCheck = 0;
+    this.lastDigestSent = 0;
+    this.lastRepair = -Infinity;
     this.lastAnimalSnapshot = 0;
     this.status = 'off';
     this.name = '';
@@ -154,7 +160,7 @@ export class MultiplayerClient {
   // Anything else is sent with delivery confirmation.
   publish(fields) {
     const message = JSON.stringify({ id: this.selfId, seq: ++this.sequence, name: this.name, ...fields });
-    const options = { qos: fields.pose || fields.animals ? 0 : 1 };
+    const options = { qos: fields.pose || fields.animals || fields.editDigest ? 0 : 1 };
     for (const relay of this.relays) {
       if (relay.connected) relay.publish(this.topic, message, options);
     }
@@ -193,12 +199,39 @@ export class MultiplayerClient {
     if (message.needEdits === true) this.scheduleSharingEdits();
     if (Number.isFinite(message.reset)) this.handleReset(message.reset, peer);
     if (Array.isArray(message.edits)) this.handleEdits(message.edits, peer);
+    if (message.editDigest) this.handleEditDigest(message.editDigest);
     if (Array.isArray(message.animals) && message.id === this.animalHostId && message.seq > peer.lastAnimalSequence) {
       peer.lastAnimalSequence = message.seq;
       this.game.animals.applySnapshot(message.animals);
     }
     if (message.animalHitRequest && this.isNewEvent(message)) this.handleAnimalHitRequest(message.animalHitRequest, peer, message.id);
     if (message.animalHit && this.isNewEvent(message)) this.handleAnimalHit(message.animalHit, message.id);
+  }
+
+  // A short summary of this world's edits. Relays can lose messages, so players compare summaries
+  // now and then, and if two differ they send each other their edits until they match. The parts
+  // are combined with xor, so the order the edits happen to be stored in makes no difference.
+  getEditDigest(): string {
+    const world = this.game.world;
+    let combined = 0;
+    world.modifiedBlocks.forEach((blockId, key) => {
+      const entry = `${key}=${blockId}@${world.editTimes.get(key) || 0}`;
+      let hash = 2166136261;
+      for (let i = 0; i < entry.length; i++) hash = Math.imul(hash ^ entry.charCodeAt(i), 16777619);
+      combined ^= hash;
+    });
+    return `${world.modifiedBlocks.size}:${combined >>> 0}:${world.lastResetAt}`;
+  }
+
+  handleEditDigest(digest: unknown) {
+    if (typeof digest !== 'string' || digest.length > 64) return;
+    const now = performance.now();
+    if (now - this.lastRepair < SYNC_REPAIR_INTERVAL_MS) return;
+    // Beyond the sharing limit two worlds could never fully match, so asking would never end
+    if (this.game.world.modifiedBlocks.size > SYNC_MAX_SHARED_EDITS) return;
+    if (digest === this.getEditDigest()) return;
+    this.lastRepair = now;
+    this.scheduleSharingEdits();
   }
 
   shareEdit(x: number, y: number, z: number, blockId: number, time: number) {
@@ -549,6 +582,10 @@ export class MultiplayerClient {
     }
 
     this.updateAnimalHost(now);
+    if (this.peers.size > 0 && now - this.lastDigestSent >= SYNC_DIGEST_INTERVAL_MS) {
+      this.lastDigestSent = now;
+      this.publish({ editDigest: this.getEditDigest() });
+    }
     if (this.animalHostId === null && this.hasAnimalFollowers && now - this.lastAnimalSnapshot >= ANIMAL_SNAPSHOT_INTERVAL_MS) {
       this.lastAnimalSnapshot = now;
       this.publish({ animals: this.game.animals.getSnapshot() });
