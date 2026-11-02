@@ -539,6 +539,44 @@
       transition: opacity 0.3s;
     }
     #toast.show { opacity: 1; }
+
+    /* Debug Overlay (F3) */
+    #debug-overlay {
+      position: fixed;
+      top: 75px;
+      left: 18px;
+      background: rgba(18, 12, 22, 0.88);
+      border: 1px solid rgba(244, 114, 182, 0.45);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e2e8f0;
+      z-index: 1000;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+    #debug-overlay.hidden {
+      display: none;
+    }
+    .debug-title {
+      font-weight: 700;
+      color: #f472b6;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .debug-row {
+      color: #cbd5e1;
+    }
+    .debug-row span {
+      color: #38bdf8;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -562,6 +600,16 @@
       <button class="hud-btn" id="btn-time" title="Chuyển Ngày/Hoàng Hôn/Đêm">☀️ Ban Ngày</button>
       <button class="hud-btn" id="btn-menu" title="Mở Cài Đặt (ESC)">⚙️ Menu</button>
     </div>
+  </div>
+
+  <!-- Debug Overlay (F3) -->
+  <div id="debug-overlay" class="hidden">
+    <div class="debug-title">🛠️ SANCTUARY DEBUG (F3)</div>
+    <div class="debug-row">XYZ: <span id="dbg-pos">0.00 / 0.00 / 0.00</span></div>
+    <div class="debug-row">Block under feet: <span id="dbg-block">Air</span></div>
+    <div class="debug-row">Loaded Chunks: <span id="dbg-chunks">0</span> | Faces: <span id="dbg-faces">0</span></div>
+    <div class="debug-row">FPS: <span id="dbg-fps">60</span></div>
+    <div class="debug-row">Fly Mode: <span id="dbg-fly">OFF</span> | Grounded: <span id="dbg-grounded">YES</span></div>
   </div>
 
   <!-- Hotbar -->
@@ -689,6 +737,25 @@
       TORII_RED: 13,
       ROOF_SLATE: 14,
       CHERRY_HEARTWOOD: 15
+    };
+
+    const BLOCK_NAMES = {
+      [BLOCK_DEFS.AIR]: 'Không khí (Air)',
+      [BLOCK_DEFS.GRASS]: 'Cỏ xanh (Grass)',
+      [BLOCK_DEFS.DIRT]: 'Đất nâu (Dirt)',
+      [BLOCK_DEFS.STONE]: 'Đá cổ (Stone)',
+      [BLOCK_DEFS.SAND]: 'Cát bờ hồ (Sand)',
+      [BLOCK_DEFS.WOOD_LOG]: 'Gỗ anh đào (Log)',
+      [BLOCK_DEFS.WOOD_PLANKS]: 'Ván gỗ mịn (Planks)',
+      [BLOCK_DEFS.LEAVES_LIGHT]: 'Hoa hồng nhạt (Sakura)',
+      [BLOCK_DEFS.LEAVES_DEEP]: 'Hoa hồng đậm (Deep)',
+      [BLOCK_DEFS.LEAVES_WHITE]: 'Hoa trắng tinh (White)',
+      [BLOCK_DEFS.GLASS]: 'Kính trong suốt (Glass)',
+      [BLOCK_DEFS.LANTERN]: 'Đèn lồng phát sáng (Lantern)',
+      [BLOCK_DEFS.WATER]: 'Nước hồ trong (Water)',
+      [BLOCK_DEFS.TORII_RED]: 'Cổng Torii Đỏ',
+      [BLOCK_DEFS.ROOF_SLATE]: 'Ngói Slate Đen',
+      [BLOCK_DEFS.CHERRY_HEARTWOOD]: 'Lõi gỗ anh đào'
     };
 
     const HOTBAR_ITEMS = [
@@ -1038,48 +1105,63 @@
         this.loadSavedWorld();
       }
 
+      isSolid(b) {
+        return b === BLOCK_DEFS.GRASS ||
+               b === BLOCK_DEFS.DIRT ||
+               b === BLOCK_DEFS.STONE ||
+               b === BLOCK_DEFS.SAND ||
+               b === BLOCK_DEFS.WOOD_LOG ||
+               b === BLOCK_DEFS.WOOD_PLANKS ||
+               b === BLOCK_DEFS.TORII_RED ||
+               b === BLOCK_DEFS.ROOF_SLATE ||
+               b === BLOCK_DEFS.CHERRY_HEARTWOOD;
+      }
+
       initMaterials() {
         this.materials = {
           [BLOCK_DEFS.GRASS]: [
-            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['grass_top'].texture, roughness: 0.85 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 })
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_top'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true })
           ],
-          [BLOCK_DEFS.DIRT]: new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9 }),
-          [BLOCK_DEFS.STONE]: new THREE.MeshStandardMaterial({ map: this.textures['stone'].texture, roughness: 0.8 }),
-          [BLOCK_DEFS.SAND]: new THREE.MeshStandardMaterial({ map: this.textures['sand'].texture, roughness: 0.85 }),
+          [BLOCK_DEFS.DIRT]: new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9, vertexColors: true }),
+          [BLOCK_DEFS.STONE]: new THREE.MeshStandardMaterial({ map: this.textures['stone'].texture, roughness: 0.8, vertexColors: true }),
+          [BLOCK_DEFS.SAND]: new THREE.MeshStandardMaterial({ map: this.textures['sand'].texture, roughness: 0.85, vertexColors: true }),
           [BLOCK_DEFS.WOOD_LOG]: [
-            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['log_top'].texture, roughness: 0.8 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['log_top'].texture, roughness: 0.8 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 }),
-            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 })
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_top'].texture, roughness: 0.8, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_top'].texture, roughness: 0.8, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true })
           ],
-          [BLOCK_DEFS.WOOD_PLANKS]: new THREE.MeshStandardMaterial({ map: this.textures['planks'].texture, roughness: 0.75 }),
+          [BLOCK_DEFS.WOOD_PLANKS]: new THREE.MeshStandardMaterial({ map: this.textures['planks'].texture, roughness: 0.75, vertexColors: true }),
           [BLOCK_DEFS.LEAVES_LIGHT]: new THREE.MeshStandardMaterial({
             map: this.textures['leaves_light'].texture,
             transparent: true,
             alphaTest: 0.25,
             roughness: 0.65,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            vertexColors: true
           }),
           [BLOCK_DEFS.LEAVES_DEEP]: new THREE.MeshStandardMaterial({
             map: this.textures['leaves_deep'].texture,
             transparent: true,
             alphaTest: 0.25,
             roughness: 0.65,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            vertexColors: true
           }),
           [BLOCK_DEFS.LEAVES_WHITE]: new THREE.MeshStandardMaterial({
             map: this.textures['leaves_white'].texture,
             transparent: true,
             alphaTest: 0.25,
             roughness: 0.65,
-            side: THREE.DoubleSide
+            side: THREE.DoubleSide,
+            vertexColors: true
           }),
           [BLOCK_DEFS.GLASS]: new THREE.MeshStandardMaterial({
             map: this.textures['glass'].texture,
@@ -1100,8 +1182,9 @@
             roughness: 0.1,
             metalness: 0.15
           }),
-          [BLOCK_DEFS.TORII_RED]: new THREE.MeshStandardMaterial({ map: this.textures['torii_red'].texture, roughness: 0.7 }),
-          [BLOCK_DEFS.ROOF_SLATE]: new THREE.MeshStandardMaterial({ map: this.textures['roof_slate'].texture, roughness: 0.8 })
+          [BLOCK_DEFS.TORII_RED]: new THREE.MeshStandardMaterial({ map: this.textures['torii_red'].texture, roughness: 0.7, vertexColors: true }),
+          [BLOCK_DEFS.ROOF_SLATE]: new THREE.MeshStandardMaterial({ map: this.textures['roof_slate'].texture, roughness: 0.8, vertexColors: true }),
+          [BLOCK_DEFS.CHERRY_HEARTWOOD]: new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true })
         };
       }
 
@@ -1208,10 +1291,10 @@
         const lakeDist = Math.hypot(wx - this.lakeCenter.x, (wz - this.lakeCenter.z) * 1.15);
         if (lakeDist < 18) {
           const depth = Math.floor((1.0 - lakeDist / 18) * 6.5);
-          return Math.max(4, step - depth);
+          return Math.max(5, step - depth); // Guaranteed minimum ground level in lake
         }
 
-        return Math.min(CHUNK_HEIGHT - 6, Math.max(6, step));
+        return Math.min(CHUNK_HEIGHT - 6, Math.max(7, step)); // Guaranteed minimum ground level on land
       }
 
       generateChunkTerrain(chunk) {
@@ -1219,21 +1302,25 @@
         const startX = cx * CHUNK_SIZE;
         const startZ = cz * CHUNK_SIZE;
         const waterLevel = 6;
+        const MIN_GROUND_LEVEL = 5;
 
         for (let lz = 0; lz < CHUNK_SIZE; lz++) {
           const wz = startZ + lz;
           for (let lx = 0; lx < CHUNK_SIZE; lx++) {
             const wx = startX + lx;
-            const baseH = this.getTerrainHeight(wx, wz);
+            const baseH = Math.max(MIN_GROUND_LEVEL, this.getTerrainHeight(wx, wz));
             const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
 
             for (let y = 0; y < CHUNK_HEIGHT; y++) {
               let block = BLOCK_DEFS.AIR;
-              if (y < baseH - 3) {
+              if (y < baseH - 3 || y <= 2) {
+                // Stone deeper, with solid foundation always at y <= 2
                 block = BLOCK_DEFS.STONE;
               } else if (y < baseH) {
+                // Dirt below
                 block = BLOCK_DEFS.DIRT;
               } else if (y === baseH) {
+                // Grass on top (or Sand near water)
                 if (baseH <= waterLevel + 1 && lakeDist < 20) {
                   block = BLOCK_DEFS.SAND;
                 } else {
@@ -1243,6 +1330,7 @@
                 block = BLOCK_DEFS.WATER;
               }
 
+              // Carve stone walking path along scenic curve
               if (block === BLOCK_DEFS.GRASS) {
                 const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
                 if (Math.abs(wx - pathCurve) < 1.6) {
@@ -1422,10 +1510,16 @@
                 let shouldRender = false;
                 if (b === BLOCK_DEFS.WATER) {
                   shouldRender = (neighbor === BLOCK_DEFS.AIR);
-                } else if (isTransparent(b)) {
-                  shouldRender = (neighbor !== b);
+                } else if (this.isSolid(b)) {
+                  // Face culling ONLY hides faces between two solid blocks!
+                  shouldRender = !this.isSolid(neighbor);
+                } else if (b === BLOCK_DEFS.GLASS) {
+                  shouldRender = (neighbor !== BLOCK_DEFS.GLASS);
+                } else if (b === BLOCK_DEFS.LANTERN) {
+                  shouldRender = (neighbor !== BLOCK_DEFS.LANTERN);
                 } else {
-                  shouldRender = isTransparent(neighbor);
+                  // Leaves and other semi-transparent blocks
+                  shouldRender = (neighbor !== b);
                 }
 
                 if (shouldRender) {
@@ -1533,9 +1627,29 @@
         chunk.mesh = mesh;
       }
 
+      getStats() {
+        let totalFaces = 0;
+        let meshedChunks = 0;
+        this.chunks.forEach(chunk => {
+          if (chunk.mesh && chunk.mesh.geometry) {
+            meshedChunks++;
+            const pos = chunk.mesh.geometry.getAttribute('position');
+            if (pos) totalFaces += pos.count / 6;
+          }
+        });
+        return { chunks: this.chunks.size, meshedChunks, totalFaces };
+      }
+
+      logStats() {
+        const stats = this.getStats();
+        console.log(`[Terrain Engine] Loaded chunks: ${stats.chunks} (${stats.meshedChunks} meshed), Visible faces: ${stats.totalFaces.toLocaleString()}`);
+        return stats;
+      }
+
       updateAround(playerX, playerZ, radiusChunks = 3) {
         const pcx = Math.floor(playerX / CHUNK_SIZE);
         const pcz = Math.floor(playerZ / CHUNK_SIZE);
+        let newMeshes = 0;
 
         for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
           for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
@@ -1556,8 +1670,13 @@
             const chunk = this.getOrCreateChunk(cx, cz);
             if (!chunk.mesh) {
               this.buildChunkMesh(chunk);
+              newMeshes++;
             }
           }
+        }
+
+        if (newMeshes > 0) {
+          this.logStats();
         }
       }
     }
@@ -2054,17 +2173,24 @@
         this.activeSlot = 0;
 
         this.player = {
-          pos: new THREE.Vector3(2, 14, -14),
+          pos: new THREE.Vector3(-2.5, 13.0, 5.5),
           vel: new THREE.Vector3(),
-          yaw: -0.6,
-          pitch: -0.15,
-          isGrounded: false,
+          yaw: -2.2,
+          pitch: -0.05,
+          isGrounded: true,
           isInWater: false,
           height: 1.8,
           radius: 0.35,
           speed: 6.0,
           runSpeed: 10.5
         };
+
+        this.isDebugOverlayVisible = false;
+        this.frameCount = 0;
+        this.currentFps = 60;
+        this.lastFpsUpdate = 0;
+        this.lastChunkX = null;
+        this.lastChunkZ = null;
 
         this.inputKeys = {};
         this.mouseAim = new THREE.Vector2();
@@ -2095,11 +2221,122 @@
         this.viewport.appendChild(this.renderer.domElement);
       }
 
+      isSolid(b) {
+        return this.world ? this.world.isSolid(b) : false;
+      }
+
+      findSpawnPosition() {
+        // Find best spawn spot on the stone path overlooking the lake
+        const candidates = [];
+        for (let wz = 2; wz <= 10; wz++) {
+          const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
+          const wx = Math.round(pathCurve);
+
+          let highestY = -1;
+          let highestBlock = BLOCK_DEFS.AIR;
+          for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+            const b = this.world.getBlock(wx, y, wz);
+            if (this.world.isSolid(b) && b !== BLOCK_DEFS.WATER) {
+              highestY = y;
+              highestBlock = b;
+              break;
+            }
+          }
+
+          if (highestY > 0) {
+            const above1 = this.world.getBlock(wx, highestY + 1, wz);
+            const above2 = this.world.getBlock(wx, highestY + 2, wz);
+            const lakeDist = Math.hypot(wx - this.world.lakeCenter.x, wz - this.world.lakeCenter.z);
+
+            if (above1 === BLOCK_DEFS.AIR && above2 === BLOCK_DEFS.AIR) {
+              const score = (highestBlock === BLOCK_DEFS.STONE ? 100 : 50) - Math.abs(lakeDist - 15);
+              candidates.push({ x: wx + 0.5, y: highestY + 1.0, z: wz + 0.5, block: highestBlock, score });
+            }
+          }
+        }
+
+        candidates.sort((a, b) => b.score - a.score);
+        if (candidates.length > 0) {
+          return candidates[0];
+        }
+
+        return { x: -2.5, y: 13.0, z: 5.5, block: BLOCK_DEFS.STONE };
+      }
+
+      teleportToSafeGround() {
+        const px = this.player.pos.x;
+        const pz = this.player.pos.z;
+
+        let bestSpot = null;
+        let minD = Infinity;
+
+        for (let rad = 0; rad <= 8; rad++) {
+          for (let dz = -rad; dz <= rad; dz++) {
+            for (let dx = -rad; dx <= rad; dx++) {
+              if (Math.max(Math.abs(dx), Math.abs(dz)) !== rad) continue;
+              const wx = Math.round(px + dx);
+              const wz = Math.round(pz + dz);
+
+              for (let y = CHUNK_HEIGHT - 2; y >= 2; y--) {
+                const b = this.world.getBlock(wx, y, wz);
+                if (this.world.isSolid(b) && b !== BLOCK_DEFS.WATER) {
+                  const above1 = this.world.getBlock(wx, y + 1, wz);
+                  const above2 = this.world.getBlock(wx, y + 2, wz);
+                  if (above1 === BLOCK_DEFS.AIR && above2 === BLOCK_DEFS.AIR) {
+                    const d = dx * dx + dz * dz;
+                    if (d < minD) {
+                      minD = d;
+                      bestSpot = { x: wx + 0.5, y: y + 1.0, z: wz + 0.5 };
+                    }
+                    break;
+                  }
+                }
+              }
+              if (bestSpot && rad > 0) break;
+            }
+            if (bestSpot && rad > 0) break;
+          }
+          if (bestSpot) break;
+        }
+
+        if (!bestSpot) {
+          bestSpot = this.spawnPoint || { x: -2.5, y: 13.0, z: 5.5 };
+        }
+
+        this.player.pos.set(bestSpot.x, bestSpot.y, bestSpot.z);
+        this.player.vel.set(0, 0, 0);
+        this.player.isGrounded = true;
+        this.showToast('Đã đưa bạn về vị trí an toàn trên mặt đất!');
+        console.warn(`[Teleport Safeguard] Player repositioned to safe ground: (${bestSpot.x}, ${bestSpot.y}, ${bestSpot.z})`);
+      }
+
       initWorld() {
         this.world = new VoxelWorld(this.scene, this.textures);
-        this.world.updateAround(this.player.pos.x, this.player.pos.z, 3);
+
+        // 1. Generate chunks around initial target area first
+        const targetSpawnX = -2;
+        const targetSpawnZ = 5;
+        this.world.updateAround(targetSpawnX, targetSpawnZ, 3);
+
+        // 2. Find exact highest solid block on stone path near lake
+        const spawn = this.findSpawnPosition();
+        this.spawnPoint = { ...spawn };
+
+        // 3. Place player's feet exactly on top of the block
+        this.player.pos.set(spawn.x, spawn.y, spawn.z);
+        this.player.vel.set(0, 0, 0);
+        this.player.isGrounded = true;
+        this.player.yaw = -2.2;
+        this.player.pitch = -0.05;
+
+        // Camera at feet height + 1.6 blocks
+        this.camera.position.set(spawn.x, spawn.y + 1.6, spawn.z);
+
+        console.log(`[Spawn System] Player spawned at X:${spawn.x.toFixed(2)}, Y:${spawn.y.toFixed(2)}, Z:${spawn.z.toFixed(2)} on stone path (Feet on top of block Y:${spawn.y - 1}, Camera Y:${(spawn.y + 1.6).toFixed(2)})`);
+        this.world.logStats();
 
         this.groundPetals = new GroundPetalSystem(this.scene, this.textures, this.world);
+        this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
 
         const boxGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
         const wireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
@@ -2340,6 +2577,12 @@
           } else if (e.code === 'KeyV') {
             this.isThirdPerson = !this.isThirdPerson;
             this.character.visible = this.isThirdPerson;
+          } else if (e.code === 'F3') {
+            e.preventDefault();
+            this.isDebugOverlayVisible = !this.isDebugOverlayVisible;
+            const dbg = document.getElementById('debug-overlay');
+            if (dbg) dbg.classList.toggle('hidden', !this.isDebugOverlayVisible);
+            this.showToast(this.isDebugOverlayVisible ? 'Bật Debug Overlay (F3)' : 'Tắt Debug Overlay');
           } else if (e.code === 'Escape') {
             this.togglePauseMenu();
           }
@@ -2543,6 +2786,14 @@
       updatePhysics(dt) {
         if (this.isCinematicTour) return;
 
+        // Auto-safeguard: if stuck inside block or fallen below world, teleport to safety
+        if (!this.isFlyMode) {
+          if (this.player.pos.y < 1.0 || this.checkAABB(this.player.pos.x, this.player.pos.y, this.player.pos.z, this.player.radius, this.player.height)) {
+            this.teleportToSafeGround();
+            return;
+          }
+        }
+
         const isRunning = this.inputKeys['ShiftLeft'] || this.inputKeys['ShiftRight'];
         const speed = this.isFlyMode ? 14.0 : (isRunning ? this.player.runSpeed : this.player.speed);
 
@@ -2596,6 +2847,7 @@
           if (this.inputKeys['Space']) this.player.vel.y = 3.5;
         } else {
           this.player.vel.y -= 24.0 * dt;
+          if (this.player.vel.y < -35) this.player.vel.y = -35;
           if (this.player.isGrounded && this.inputKeys['Space']) {
             this.player.vel.y = 8.5;
             this.player.isGrounded = false;
@@ -2610,11 +2862,12 @@
         const r = p.radius;
         const h = p.height;
 
+        // 1. Move horizontally in X
         const nextX = p.pos.x + p.vel.x * dt;
         if (!this.checkAABB(nextX, p.pos.y, p.pos.z, r, h)) {
           p.pos.x = nextX;
         } else {
-          if (p.isGrounded && !this.checkAABB(nextX, p.pos.y + 1.05, p.pos.z, r, h)) {
+          if (p.isGrounded && !this.checkAABB(nextX, p.pos.y + 1.02, p.pos.z, r, h)) {
             p.pos.x = nextX;
             p.pos.y += 1.0;
           } else {
@@ -2622,11 +2875,12 @@
           }
         }
 
+        // 2. Move horizontally in Z
         const nextZ = p.pos.z + p.vel.z * dt;
         if (!this.checkAABB(p.pos.x, p.pos.y, nextZ, r, h)) {
           p.pos.z = nextZ;
         } else {
-          if (p.isGrounded && !this.checkAABB(p.pos.x, p.pos.y + 1.05, nextZ, r, h)) {
+          if (p.isGrounded && !this.checkAABB(p.pos.x, p.pos.y + 1.02, nextZ, r, h)) {
             p.pos.z = nextZ;
             p.pos.y += 1.0;
           } else {
@@ -2634,34 +2888,69 @@
           }
         }
 
+        // 3. Move vertically in Y with floor snapping
         const nextY = p.pos.y + p.vel.y * dt;
         if (!this.checkAABB(p.pos.x, nextY, p.pos.z, r, h)) {
           p.pos.y = nextY;
           p.isGrounded = false;
         } else {
-          if (p.vel.y < 0) p.isGrounded = true;
-          p.vel.y = 0;
+          if (p.vel.y < 0) {
+            // Find highest solid block top surface under player footprint
+            let floorY = -1;
+            const minX = Math.floor(p.pos.x - r + 0.05);
+            const maxX = Math.floor(p.pos.x + r - 0.05);
+            const minZ = Math.floor(p.pos.z - r + 0.05);
+            const maxZ = Math.floor(p.pos.z + r - 0.05);
+            const testYMin = Math.floor(nextY);
+            const testYMax = Math.floor(p.pos.y);
+
+            for (let bx = minX; bx <= maxX; bx++) {
+              for (let bz = minZ; bz <= maxZ; bz++) {
+                for (let by = testYMax; by >= testYMin; by--) {
+                  const b = this.world.getBlock(bx, by, bz);
+                  if (this.world.isSolid(b)) {
+                    floorY = Math.max(floorY, by + 1.0);
+                  }
+                }
+              }
+            }
+
+            if (floorY >= 0) {
+              p.pos.y = floorY;
+            }
+            p.vel.y = 0;
+            p.isGrounded = true;
+          } else if (p.vel.y > 0) {
+            p.vel.y = 0;
+          }
         }
 
+        // Standing ground check
+        if (!p.isGrounded && p.vel.y === 0) {
+          if (this.checkAABB(p.pos.x, p.pos.y - 0.05, p.pos.z, r, h)) {
+            p.isGrounded = true;
+          }
+        }
+
+        // Fall below world safeguard
         if (p.pos.y < 1.0) {
-          p.pos.set(2, 14, -14);
-          p.vel.set(0, 0, 0);
+          this.teleportToSafeGround();
         }
       }
 
       checkAABB(x, y, z, r, h) {
-        const minX = Math.floor(x - r);
-        const maxX = Math.floor(x + r);
-        const minY = Math.floor(y);
-        const maxY = Math.floor(y + h);
-        const minZ = Math.floor(z - r);
-        const maxZ = Math.floor(z + r);
+        const minX = Math.floor(x - r + 0.001);
+        const maxX = Math.floor(x + r - 0.001);
+        const minY = Math.floor(y + 0.001);
+        const maxY = Math.floor(y + h - 0.001);
+        const minZ = Math.floor(z - r + 0.001);
+        const maxZ = Math.floor(z + r - 0.001);
 
         for (let bx = minX; bx <= maxX; bx++) {
           for (let by = minY; by <= maxY; by++) {
             for (let bz = minZ; bz <= maxZ; bz++) {
               const b = this.world.getBlock(bx, by, bz);
-              if (b !== BLOCK_DEFS.AIR && b !== BLOCK_DEFS.WATER) {
+              if (this.world.isSolid(b)) {
                 return true;
               }
             }
@@ -2750,17 +3039,18 @@
             const dist = 3.8;
             const camOffset = new THREE.Vector3(
               Math.sin(this.player.yaw) * dist * Math.cos(this.player.pitch),
-              this.player.height * 0.9 + Math.sin(this.player.pitch) * dist,
+              1.6 + Math.sin(this.player.pitch) * dist,
               Math.cos(this.player.yaw) * dist * Math.cos(this.player.pitch)
             );
             this.camera.position.copy(this.player.pos).add(camOffset);
             this.camera.lookAt(
               this.player.pos.x,
-              this.player.pos.y + this.player.height * 0.8,
+              this.player.pos.y + 1.4,
               this.player.pos.z
             );
           } else {
-            this.camera.position.copy(this.player.pos).add(new THREE.Vector3(0, this.player.height * 0.9, 0));
+            // Camera at feet height + 1.6 blocks
+            this.camera.position.copy(this.player.pos).add(new THREE.Vector3(0, 1.6, 0));
             const lookTarget = this.camera.position.clone().add(new THREE.Vector3(
               -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
               Math.sin(this.player.pitch),
@@ -2775,7 +3065,44 @@
         const isMoving = this.inputKeys['KeyW'] || this.inputKeys['KeyS'] || this.inputKeys['KeyA'] || this.inputKeys['KeyD'];
         this.character.update(this.player.pos, this.player.yaw, isMoving, dt);
 
-        this.world.updateAround(this.player.pos.x, this.player.pos.z, 2);
+        // Update chunks when crossing chunk boundaries
+        const pcx = Math.floor(this.player.pos.x / CHUNK_SIZE);
+        const pcz = Math.floor(this.player.pos.z / CHUNK_SIZE);
+        if (pcx !== this.lastChunkX || pcz !== this.lastChunkZ) {
+          this.lastChunkX = pcx;
+          this.lastChunkZ = pcz;
+          this.world.updateAround(this.player.pos.x, this.player.pos.z, 2);
+        }
+
+        // Live Debug Overlay & FPS
+        this.frameCount = (this.frameCount || 0) + 1;
+        const now = performance.now();
+        if (!this.lastFpsUpdate) this.lastFpsUpdate = now;
+        if (now - this.lastFpsUpdate >= 250) {
+          this.currentFps = Math.round((this.frameCount * 1000) / (now - this.lastFpsUpdate));
+          this.frameCount = 0;
+          this.lastFpsUpdate = now;
+
+          if (this.isDebugOverlayVisible) {
+            const p = this.player;
+            document.getElementById('dbg-pos').textContent =
+              `${p.pos.x.toFixed(2)} / ${p.pos.y.toFixed(2)} / ${p.pos.z.toFixed(2)}`;
+
+            const bx = Math.floor(p.pos.x);
+            const by = Math.floor(p.pos.y - 0.1);
+            const bz = Math.floor(p.pos.z);
+            const underBlock = this.world.getBlock(bx, by, bz);
+            const blockName = BLOCK_NAMES[underBlock] || `ID: ${underBlock}`;
+            document.getElementById('dbg-block').textContent = `${blockName} [${bx}, ${by}, ${bz}]`;
+
+            const stats = this.world.getStats();
+            document.getElementById('dbg-chunks').textContent = `${stats.chunks}`;
+            document.getElementById('dbg-faces').textContent = `${stats.totalFaces.toLocaleString()}`;
+            document.getElementById('dbg-fps').textContent = `${this.currentFps}`;
+            document.getElementById('dbg-fly').textContent = this.isFlyMode ? 'ON' : 'OFF';
+            document.getElementById('dbg-grounded').textContent = p.isGrounded ? 'YES' : 'NO';
+          }
+        }
 
         const target = this.getTargetBlock();
         if (target && !this.isCinematicTour) {
