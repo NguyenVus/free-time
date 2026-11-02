@@ -1,556 +1,2799 @@
 <!DOCTYPE html>
 <html lang="vi">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Vườn Anh Đào • Sakura Sanctuary</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Noto+Serif+JP:wght@300;400;600&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --pink-blush: #fbcfe8;
-        --pink-primary: #f472b6;
-        --pink-deep: #db2777;
-        --purple-soft: #e9d5ff;
-        --purple-deep: #7e22ce;
-        --wood-brown: #78350f;
-        --wood-dark: #451a03;
-        --glass-bg: rgba(28, 18, 32, 0.55);
-        --glass-border: rgba(255, 255, 255, 0.18);
-        --glass-hover: rgba(255, 255, 255, 0.28);
-        --text-white: #fffdfa;
-        --text-muted: #e2e8f0;
-        --accent-glow: #f472b6;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Vườn Hoa Anh Đào • 3D Voxel Sanctuary</title>
+  <!-- Three.js r128 from cdnjs (Standalone, no build tool required) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        user-select: none;
-        -webkit-user-select: none;
-      }
+  <style>
+    :root {
+      --blush-pink: #fbcfe8;
+      --soft-pink: #f472b6;
+      --deep-pink: #db2777;
+      --soft-lavender: #e9d5ff;
+      --grass-green: #5ca62d;
+      --wood-brown: #38242c;
+      --glass-bg: rgba(26, 16, 28, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.22);
+      --glass-hover: rgba(255, 255, 255, 0.35);
+      --text-main: #fffdfa;
+      --text-muted: #e2e8f0;
+      --accent-glow: #f472b6;
+    }
 
-      html, body {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        background: #0f0a14;
-        font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
-        color: var(--text-white);
-      }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
 
-      /* Fullscreen Canvas */
-      #garden-canvas {
-        position: fixed;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 1;
-        cursor: pointer;
-      }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0f0a14;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      color: var(--text-main);
+    }
 
-      /* Welcome Screen Overlay */
-      #welcome-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 50;
-        background: radial-gradient(circle at center, rgba(35, 18, 42, 0.78) 0%, rgba(12, 6, 18, 0.94) 100%);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        padding: 24px;
-        transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 1.2s;
-      }
+    #viewport {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: block;
+    }
 
-      #welcome-overlay.fade-out {
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-      }
+    /* Cinematic Sunbeam Bloom Overlay */
+    #bloom-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background: radial-gradient(circle at 75% 25%, rgba(255, 235, 210, 0.22) 0%, rgba(254, 215, 226, 0.08) 50%, transparent 80%);
+      mix-blend-mode: screen;
+      opacity: 0.9;
+      transition: opacity 1.5s ease;
+    }
 
-      .welcome-card {
-        background: rgba(45, 25, 52, 0.6);
-        border: 1px solid rgba(251, 207, 232, 0.28);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(244, 114, 182, 0.2);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        border-radius: 28px;
-        padding: 44px 52px;
-        max-width: 540px;
-        width: 90%;
-        animation: floatUp 1.2s cubic-bezier(0.16, 1, 0.3, 1);
-      }
+    /* Crosshair */
+    #crosshair {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 14px;
+      height: 14px;
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.85;
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+    }
+    #crosshair::before {
+      top: 6px;
+      left: -6px;
+      width: 26px;
+      height: 2px;
+    }
+    #crosshair::after {
+      top: -6px;
+      left: 6px;
+      width: 2px;
+      height: 26px;
+    }
 
-      @keyframes floatUp {
-        0% { opacity: 0; transform: translateY(30px) scale(0.96); }
-        100% { opacity: 1; transform: translateY(0) scale(1); }
-      }
+    /* Hotbar */
+    #hotbar {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      z-index: 15;
+      transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+    .hotbar-slot {
+      width: 48px;
+      height: 48px;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .hotbar-slot:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+    .hotbar-slot.active {
+      border-color: #ffd166;
+      background: rgba(255, 209, 102, 0.25);
+      transform: translateY(-4px) scale(1.08);
+      box-shadow: 0 0 12px rgba(255, 209, 102, 0.6);
+    }
+    .hotbar-slot canvas {
+      width: 32px;
+      height: 32px;
+      image-rendering: pixelated;
+    }
+    .slot-key {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.7);
+    }
 
-      .sakura-emblem {
-        font-size: 42px;
-        margin-bottom: 12px;
-        display: inline-block;
-        filter: drop-shadow(0 0 16px rgba(244, 114, 182, 0.8));
-        animation: emblemSway 3s ease-in-out infinite;
-      }
+    /* Top HUD */
+    #top-hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      z-index: 15;
+    }
+    .hud-title-card {
+      pointer-events: auto;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hud-title-card h1 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hud-title-card h1 span {
+      color: var(--soft-pink);
+    }
+    .hud-btn-group {
+      pointer-events: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .hud-btn {
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .hud-btn:hover {
+      background: var(--glass-hover);
+      border-color: rgba(255, 255, 255, 0.5);
+      transform: translateY(-2px);
+    }
+    .hud-btn.active {
+      background: rgba(244, 114, 182, 0.35);
+      border-color: var(--soft-pink);
+    }
 
-      @keyframes emblemSway {
-        0%, 100% { transform: rotate(0deg) scale(1); }
-        50% { transform: rotate(10deg) scale(1.08); }
-      }
+    /* Minimap */
+    #minimap-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      background: rgba(15, 10, 20, 0.7);
+      backdrop-filter: blur(8px);
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      z-index: 15;
+      pointer-events: none;
+    }
+    #minimap-canvas {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
 
-      .welcome-title {
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 42px;
-        font-weight: 700;
-        letter-spacing: 2px;
-        background: linear-gradient(135deg, #ffffff 10%, #fbcfe8 60%, #f472b6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 6px;
-      }
+    /* Haiku Banner */
+    #haiku-banner {
+      position: fixed;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(24, 14, 28, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(244, 114, 182, 0.3);
+      padding: 10px 24px;
+      border-radius: 20px;
+      text-align: center;
+      pointer-events: none;
+      z-index: 12;
+      opacity: 0;
+      transition: opacity 1.2s ease, transform 1.2s ease;
+      max-width: 90vw;
+    }
+    #haiku-banner.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+    #haiku-text {
+      font-style: italic;
+      font-size: 13px;
+      color: #ffe4e6;
+      letter-spacing: 0.5px;
+    }
+    #haiku-author {
+      font-size: 11px;
+      color: var(--soft-pink);
+      margin-top: 2px;
+      font-weight: 600;
+    }
 
-      .welcome-kanji {
-        font-family: 'Noto Serif JP', serif;
-        font-size: 16px;
-        letter-spacing: 6px;
-        color: var(--purple-soft);
-        margin-bottom: 18px;
-        text-transform: uppercase;
-      }
+    /* Welcome Overlay */
+    #welcome-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: radial-gradient(circle at center, rgba(35, 18, 38, 0.88) 0%, rgba(12, 6, 16, 0.98) 100%);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    #welcome-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .welcome-box {
+      max-width: 580px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 20px;
+      padding: 36px 32px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      animation: floatUp 0.8s ease;
+    }
+    @keyframes floatUp {
+      from { transform: translateY(30px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .welcome-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(244, 114, 182, 0.2);
+      border: 1px solid rgba(244, 114, 182, 0.4);
+      color: var(--blush-pink);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+    .welcome-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.25;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(244, 114, 182, 0.4);
+    }
+    .welcome-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 28px;
+      font-size: 12px;
+    }
+    .ctrl-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ctrl-key {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 3px 7px;
+      border-radius: 6px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #ffd166;
+      min-width: 24px;
+      text-align: center;
+    }
+    .btn-enter {
+      width: 100%;
+      padding: 14px 28px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #f472b6, #db2777);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 8px 24px rgba(219, 39, 119, 0.45);
+      transition: all 0.25s;
+    }
+    .btn-enter:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 12px 30px rgba(219, 39, 119, 0.65);
+    }
 
-      .welcome-desc {
-        font-size: 15px;
-        line-height: 1.65;
-        color: #f1f5f9;
-        margin-bottom: 32px;
-        font-weight: 300;
-      }
+    /* Pause Menu Modal */
+    #pause-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: rgba(10, 6, 14, 0.75);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+    #pause-menu.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .pause-box {
+      width: 90%;
+      max-width: 480px;
+      background: rgba(28, 16, 32, 0.95);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+    .pause-box h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: #fff;
+    }
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 13px;
+    }
+    .setting-row select, .setting-row input[type="range"] {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 6px;
+      outline: none;
+    }
+    .pause-actions {
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .btn-action {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-action:hover {
+      background: var(--glass-hover);
+    }
+    .btn-action.primary {
+      background: var(--deep-pink);
+      border-color: var(--soft-pink);
+    }
 
-      .enter-btn {
-        background: linear-gradient(135deg, #ec4899 0%, #d946ef 50%, #a855f7 100%);
-        color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        border-radius: 40px;
-        padding: 16px 38px;
-        font-size: 16px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        box-shadow: 0 10px 30px rgba(236, 72, 153, 0.45);
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-      }
+    /* Mobile Controls */
+    #mobile-controls {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+    @media (pointer: coarse) or (max-width: 800px) {
+      #mobile-controls { display: block; }
+      #hotbar { bottom: 100px; transform: translateX(-50%) scale(0.9); }
+      #minimap-container { top: 70px; right: 16px; bottom: auto; width: 90px; height: 90px; }
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+    #joystick-base {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      width: 110px;
+      height: 110px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    #joystick-thumb {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 48px;
+      height: 48px;
+      background: rgba(244, 114, 182, 0.8);
+      border-radius: 50%;
+      box-shadow: 0 0 12px rgba(244, 114, 182, 0.6);
+    }
+    .mobile-btn-cluster {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: auto;
+    }
+    .mob-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .mob-btn:active {
+      background: var(--soft-pink);
+    }
 
-      .enter-btn:hover {
-        transform: translateY(-2px) scale(1.03);
-        box-shadow: 0 14px 40px rgba(236, 72, 153, 0.65);
-      }
+    /* Notification Toast */
+    #toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(20, 10, 24, 0.85);
+      border: 1px solid var(--soft-pink);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <!-- 3D Canvas Viewport -->
+  <div id="viewport"></div>
+  <div id="bloom-overlay"></div>
 
-      .enter-btn:active {
-        transform: translateY(1px) scale(0.98);
-      }
+  <!-- Crosshair -->
+  <div id="crosshair"></div>
 
-      .welcome-hint {
-        margin-top: 24px;
-        font-size: 12.5px;
-        color: #cbd5e1;
-        letter-spacing: 0.5px;
-      }
-
-      /* Corner Control Toolbar */
-      #control-bar {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 30;
-        background: var(--glass-bg);
-        border: 1px solid var(--glass-border);
-        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        border-radius: 20px;
-        padding: 8px 14px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transition: opacity 0.5s ease, transform 0.5s ease;
-      }
-
-      #control-bar.hidden {
-        opacity: 0;
-        pointer-events: none;
-        transform: translateY(-10px);
-      }
-
-      /* Mood Switch Pills */
-      .mood-group {
-        display: flex;
-        background: rgba(0, 0, 0, 0.28);
-        border-radius: 30px;
-        padding: 3px;
-        gap: 2px;
-      }
-
-      .mood-pill {
-        background: transparent;
-        border: none;
-        color: #cbd5e1;
-        font-size: 12.5px;
-        font-weight: 500;
-        padding: 6px 14px;
-        border-radius: 24px;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-
-      .mood-pill:hover {
-        color: #ffffff;
-      }
-
-      .mood-pill.active {
-        background: linear-gradient(135deg, rgba(244, 114, 182, 0.4), rgba(192, 132, 252, 0.4));
-        border: 1px solid rgba(244, 114, 182, 0.5);
-        color: #ffffff;
-        box-shadow: 0 0 12px rgba(244, 114, 182, 0.3);
-      }
-
-      /* Control Divider */
-      .ctrl-divider {
-        width: 1px;
-        height: 22px;
-        background: rgba(255, 255, 255, 0.16);
-      }
-
-      /* Icon & Action Buttons */
-      .icon-btn {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        color: #ffffff;
-        border-radius: 12px;
-        padding: 7px 11px;
-        font-size: 13px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        transition: all 0.25s ease;
-      }
-
-      .icon-btn:hover {
-        background: var(--glass-hover);
-        border-color: rgba(255, 255, 255, 0.35);
-      }
-
-      /* Animated Audio Equalizer Bars */
-      .audio-bars {
-        display: flex;
-        align-items: flex-end;
-        gap: 2px;
-        height: 12px;
-      }
-
-      .audio-bar {
-        width: 2.5px;
-        background: #f472b6;
-        border-radius: 2px;
-        height: 3px;
-        transition: height 0.2s;
-      }
-
-      .playing .audio-bar:nth-child(1) { animation: barPlay 0.8s infinite ease-in-out; }
-      .playing .audio-bar:nth-child(2) { animation: barPlay 0.5s infinite ease-in-out 0.2s; }
-      .playing .audio-bar:nth-child(3) { animation: barPlay 0.9s infinite ease-in-out 0.4s; }
-
-      @keyframes barPlay {
-        0%, 100% { height: 3px; }
-        50% { height: 12px; }
-      }
-
-      /* Sliders */
-      .volume-box, .petal-box {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 12px;
-        color: #cbd5e1;
-      }
-
-      input[type="range"] {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 70px;
-        height: 4px;
-        border-radius: 2px;
-        background: rgba(255, 255, 255, 0.22);
-        outline: none;
-        cursor: pointer;
-      }
-
-      input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 13px;
-        height: 13px;
-        border-radius: 50%;
-        background: #f472b6;
-        box-shadow: 0 0 8px #f472b6;
-        cursor: pointer;
-        transition: transform 0.15s;
-      }
-
-      input[type="range"]::-webkit-slider-thumb:hover {
-        transform: scale(1.25);
-      }
-
-      /* FPS Badge */
-      .fps-badge {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 11.5px;
-        color: #cbd5e1;
-        padding: 4px 8px;
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.25);
-      }
-
-      .badge-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #4ade80;
-        box-shadow: 0 0 8px #4ade80;
-      }
-
-      /* Haiku Box (Màn thơ Haiku mờ dần) */
-      #haiku-box {
-        position: fixed;
-        bottom: 38px;
-        left: 50%;
-        transform: translateX(-50%) translateY(14px);
-        z-index: 25;
-        background: rgba(24, 14, 28, 0.65);
-        border: 1px solid rgba(251, 207, 232, 0.22);
-        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 30px rgba(244, 114, 182, 0.15);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-radius: 22px;
-        padding: 20px 36px;
-        text-align: center;
-        max-width: 480px;
-        width: 86%;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 1.8s ease, transform 1.8s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-
-      #haiku-box.visible {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-        pointer-events: auto;
-      }
-
-      .haiku-flower-icon {
-        font-size: 18px;
-        color: #f472b6;
-        margin-bottom: 6px;
-      }
-
-      #haiku-content {
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 17px;
-        font-style: italic;
-        line-height: 1.7;
-        color: #fff1f2;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-      }
-
-      #haiku-japanese {
-        font-family: 'Noto Serif JP', serif;
-        font-size: 13.5px;
-        color: #fbcfe8;
-        letter-spacing: 2px;
-        margin-bottom: 6px;
-      }
-
-      #haiku-author {
-        font-size: 12px;
-        color: #cbd5e1;
-        letter-spacing: 1px;
-      }
-
-      /* Subtle corner guide */
-      #hint-tag {
-        position: fixed;
-        bottom: 16px;
-        right: 18px;
-        z-index: 20;
-        font-size: 11px;
-        color: rgba(255, 255, 255, 0.45);
-        pointer-events: none;
-        letter-spacing: 0.5px;
-      }
-
-      /* Mobile responsiveness */
-      @media (max-width: 768px) {
-        #control-bar {
-          top: 10px;
-          right: 10px;
-          left: 10px;
-          padding: 6px 10px;
-          border-radius: 16px;
-          gap: 8px;
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-          justify-content: flex-start;
-          white-space: nowrap;
-        }
-
-        #control-bar::-webkit-scrollbar {
-          display: none;
-        }
-
-        .volume-box input[type="range"],
-        .petal-box input[type="range"] {
-          width: 48px;
-        }
-
-        .welcome-card {
-          padding: 28px 20px;
-        }
-
-        .welcome-title {
-          font-size: 30px;
-        }
-
-        #haiku-box {
-          bottom: 24px;
-          padding: 14px 18px;
-        }
-
-        #haiku-content {
-          font-size: 15px;
-        }
-
-        #hint-tag {
-          display: none; /* Avoid overlapping haiku on small phones */
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <!-- Procedural 2D Scenic Canvas -->
-    <canvas id="garden-canvas"></canvas>
-
-    <!-- Welcome / Start Overlay Screen -->
-    <div id="welcome-overlay">
-      <div class="welcome-card">
-        <div class="sakura-emblem">🌸</div>
-        <h1 class="welcome-title">Vườn Anh Đào</h1>
-        <div class="welcome-kanji">桜の庭 • SAKURA SANCTUARY</div>
-        <p class="welcome-desc">
-          Thả hồn giữa ngàn cánh hoa rơi chao lượn trong gió xuân.<br />
-          Lắng nghe tiếng chim hót, tiếng nước chảy và giai điệu đàn koto êm đềm.
-        </p>
-        <button id="enter-garden-btn" class="enter-btn">
-          <span>🌸 Bước Vào Vườn</span>
-        </button>
-        <div class="welcome-hint">
-          🎧 Nhấp chuột để mở toàn bộ âm thanh phong cảnh &amp; nhạc thiền Koto
-        </div>
-      </div>
+  <!-- Top HUD -->
+  <div id="top-hud">
+    <div class="hud-title-card">
+      <h1>🌸 <span>VƯỜN ANH ĐÀO</span> HD VOXEL</h1>
     </div>
+    <div class="hud-btn-group">
+      <button class="hud-btn" id="btn-audio" title="Bật/Tắt Âm Thanh">🔊 Nhạc: BẬT</button>
+      <button class="hud-btn" id="btn-tour" title="Chuyến Tham Quan Tự Động">🎥 Tham Quan</button>
+      <button class="hud-btn" id="btn-cam" title="Đổi Góc Nhìn 1st/3rd Person">👤 Góc Nhìn</button>
+      <button class="hud-btn" id="btn-fly" title="Bật/Tắt Bay Tự Do">🕊️ Bay: TẮT</button>
+      <button class="hud-btn" id="btn-time" title="Chuyển Ngày/Hoàng Hôn/Đêm">☀️ Ban Ngày</button>
+      <button class="hud-btn" id="btn-menu" title="Mở Cài Đặt (ESC)">⚙️ Menu</button>
+    </div>
+  </div>
 
-    <!-- Floating Glassmorphic Control Toolbar -->
-    <div id="control-bar" class="hidden">
-      <!-- Day / Sunset / Night mode pills -->
-      <div class="mood-group">
-        <button class="mood-pill active" data-mood="day" title="Chế độ Ban Ngày">
-          ☀️ <span>Ngày</span>
-        </button>
-        <button class="mood-pill" data-mood="sunset" title="Chế độ Hoàng Hôn">
-          🌇 <span>Hoàng hôn</span>
-        </button>
-        <button class="mood-pill" data-mood="night" title="Chế độ Ban Đêm">
-          🌙 <span>Đêm</span>
-        </button>
+  <!-- Hotbar -->
+  <div id="hotbar"></div>
+
+  <!-- Minimap -->
+  <div id="minimap-container">
+    <canvas id="minimap-canvas" width="64" height="64"></canvas>
+  </div>
+
+  <!-- Haiku Banner -->
+  <div id="haiku-banner">
+    <div id="haiku-text">"Hoa anh đào rơi / Trên thềm cỏ xanh ngắt / Gió thoảng hương thiền..."</div>
+    <div id="haiku-author">— Matsuo Bashō</div>
+  </div>
+
+  <!-- Welcome Screen -->
+  <div id="welcome-screen">
+    <div class="welcome-box">
+      <div class="welcome-badge">3D Voxel • Original Design</div>
+      <h1 class="welcome-title">CHERRY BLOSSOM GARDEN</h1>
+      <p class="welcome-sub">
+        Khu Vườn Anh Đào Voxel 3D Tự Sinh: Đồi hoa bậc thang, cánh hoa rơi theo gió, tiếng koto và hồ nước tĩnh lặng.
+      </p>
+
+      <div class="controls-grid">
+        <div class="ctrl-item"><span class="ctrl-key">WASD</span> Di chuyển</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột</span> Xoay góc nhìn</div>
+        <div class="ctrl-item"><span class="ctrl-key">Space</span> Nhảy / Bơi lên</div>
+        <div class="ctrl-item"><span class="ctrl-key">Shift</span> Chạy nhanh</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột Trái</span> Đào khối / Rung cây hoa</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột Phải</span> Đặt khối mới</div>
+        <div class="ctrl-item"><span class="ctrl-key">1 - 9</span> Chọn khối trong túi</div>
+        <div class="ctrl-item"><span class="ctrl-key">F / C</span> Chế độ bay / Tham quan</div>
       </div>
 
-      <div class="ctrl-divider"></div>
-
-      <!-- Sound Toggle & Volume -->
-      <button id="audio-toggle-btn" class="icon-btn playing" title="Bật / Tắt Âm Thanh">
-        <div class="audio-bars">
-          <div class="audio-bar"></div>
-          <div class="audio-bar"></div>
-          <div class="audio-bar"></div>
-        </div>
+      <button class="btn-enter" id="btn-enter">
+        🌸 BƯỚC VÀO VƯỜN HOA
       </button>
+    </div>
+  </div>
 
-      <div class="volume-box">
-        <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" title="Âm lượng" />
+  <!-- Pause Menu -->
+  <div id="pause-menu">
+    <div class="pause-box">
+      <h2>⚙️ Cài Đặt Khu Vườn</h2>
+
+      <div class="setting-row">
+        <span>Thời gian trong ngày</span>
+        <select id="set-time">
+          <option value="day">Ban Ngày (Golden Hour)</option>
+          <option value="sunset">Hoàng Hôn (Sakura Sunset)</option>
+          <option value="night">Đêm Trăng & Đom Đóm (Moonlight)</option>
+        </select>
       </div>
 
-      <div class="ctrl-divider"></div>
-
-      <!-- Petal Density Slider -->
-      <div class="petal-box" title="Mật độ cánh hoa anh đào">
-        <span>🌸</span>
-        <input type="range" id="petal-slider" min="40" max="320" step="10" value="140" />
-        <span id="petal-val">140</span>
+      <div class="setting-row">
+        <span>Âm lượng tổng (Web Audio)</span>
+        <input type="range" id="set-volume" min="0" max="100" value="70" />
       </div>
 
-      <!-- Trigger Wind Gust Button -->
-      <button id="wind-gust-btn" class="icon-btn" title="Tạo một đợt gió thổi mạnh">
-        🍃 <span>Gió</span>
-      </button>
+      <div class="setting-row">
+        <span>Mật độ cánh hoa bay</span>
+        <select id="set-petals">
+          <option value="150">Nhẹ nhàng (150)</option>
+          <option value="350" selected>Tiêu chuẩn (350)</option>
+          <option value="700">Dày đặc (700)</option>
+        </select>
+      </div>
 
-      <!-- Fullscreen Toggle -->
-      <button id="fullscreen-btn" class="icon-btn" title="Chế độ toàn màn hình">
-        ⛶
-      </button>
+      <div class="setting-row">
+        <span>Tầm hiển thị (Render Distance)</span>
+        <select id="set-chunks">
+          <option value="2">Gần (2 Chunks - Mượt)</option>
+          <option value="3" selected>Tiêu chuẩn (3 Chunks)</option>
+          <option value="4">Xa (4 Chunks - Chi tiết)</option>
+        </select>
+      </div>
 
-      <!-- FPS Counter -->
-      <div class="fps-badge">
-        <div class="badge-dot"></div>
-        <span id="fps-display">60 FPS</span>
+      <div class="pause-actions">
+        <button class="btn-action primary" id="btn-resume">▶ Tiếp Tục Khám Phá</button>
+        <button class="btn-action" id="btn-reset-world">🔄 Đặt Lại Thế Giới Gốc</button>
+        <button class="btn-action" id="btn-fullscreen">⛶ Toàn Màn Hình</button>
       </div>
     </div>
+  </div>
 
-    <!-- Floating Haiku Poem Box (Mỗi vài chục giây hiện lên và mờ dần) -->
-    <div id="haiku-box">
-      <div class="haiku-flower-icon">🌸</div>
-      <div id="haiku-content">
-        <div>Hoa đào rụng rơi</div>
-        <div>Như tuyết bay trong gió sớm</div>
-        <div>Vấn vương lòng người</div>
-      </div>
-      <div id="haiku-japanese">花散りて また咲く春を 待つ心</div>
-      <div id="haiku-author">— Yosa Buson (与謝蕪村)</div>
+  <!-- Mobile Controls -->
+  <div id="mobile-controls">
+    <div id="joystick-base">
+      <div id="joystick-thumb"></div>
     </div>
-
-    <!-- Interactive Hint in bottom corner -->
-    <div id="hint-tag">
-      Di chuột / Chạm kéo tạo gió • Nhấp chuột / Chạm bung cánh hoa &amp; chuông gió
+    <div class="mobile-btn-cluster">
+      <div class="mob-btn" id="mob-jump">NHẢY</div>
+      <div class="mob-btn" id="mob-break">ĐÀO</div>
+      <div class="mob-btn" id="mob-place">ĐẶT</div>
     </div>
+  </div>
 
-    <!-- Main Module Script -->
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+  <div id="toast"></div>
+
+  <!-- ========================================================================= -->
+  <!-- 3D VOXEL SANCTUARY CORE SCRIPT                                            -->
+  <!-- ========================================================================= -->
+  <script>
+    'use strict';
+
+    // =========================================================================
+    // 1. PROCEDURAL 16x16 PIXEL-ART TEXTURE GENERATOR (NearestFilter)
+    // =========================================================================
+    const BLOCK_DEFS = {
+      AIR: 0,
+      GRASS: 1,
+      DIRT: 2,
+      STONE: 3,
+      SAND: 4,
+      WOOD_LOG: 5,
+      WOOD_PLANKS: 6,
+      LEAVES_LIGHT: 7,
+      LEAVES_DEEP: 8,
+      LEAVES_WHITE: 9,
+      GLASS: 10,
+      LANTERN: 11,
+      WATER: 12,
+      TORII_RED: 13,
+      ROOF_SLATE: 14,
+      CHERRY_HEARTWOOD: 15
+    };
+
+    const HOTBAR_ITEMS = [
+      { id: BLOCK_DEFS.GRASS, name: 'Cỏ Xanh (Grass)' },
+      { id: BLOCK_DEFS.DIRT, name: 'Đất Nâu (Dirt)' },
+      { id: BLOCK_DEFS.STONE, name: 'Đá Cổ (Stone)' },
+      { id: BLOCK_DEFS.WOOD_LOG, name: 'Gỗ Anh Đào (Log)' },
+      { id: BLOCK_DEFS.WOOD_PLANKS, name: 'Ván Gỗ Mịn (Planks)' },
+      { id: BLOCK_DEFS.LEAVES_LIGHT, name: 'Hoa Hồng Nhạt (Sakura)' },
+      { id: BLOCK_DEFS.LEAVES_DEEP, name: 'Hoa Hồng Đậm (Deep Pink)' },
+      { id: BLOCK_DEFS.LEAVES_WHITE, name: 'Hoa Trắng Tinh (White)' },
+      { id: BLOCK_DEFS.LANTERN, name: 'Đèn Lồng Phát Sáng (Lantern)' }
+    ];
+
+    class TextureGenerator {
+      static create16x16(drawFn) {
+        const c = document.createElement('canvas');
+        c.width = 16;
+        c.height = 16;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        drawFn(ctx);
+        const tex = new THREE.CanvasTexture(c);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        return { texture: tex, canvas: c };
+      }
+
+      static generateAll() {
+        const atlas = {};
+
+        // 1. Grass Top: Fresh vibrant green with micro variation
+        atlas['grass_top'] = this.create16x16(ctx => {
+          const cols = ['#72ba2e', '#65ab27', '#7fc738', '#5c9e22', '#6ebd2b'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        });
+
+        // 2. Grass Side: Rich dark soil beneath fresh grass cap
+        atlas['grass_side'] = this.create16x16(ctx => {
+          const dCols = ['#3d2516', '#4a2e1c', '#331e11', '#52331f'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = dCols[Math.floor(Math.random() * dCols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          // Top grass layer with hanging blades
+          const gCols = ['#72ba2e', '#65ab27', '#7fc738'];
+          for (let x = 0; x < 16; x++) {
+            const h = 3 + Math.floor(Math.sin(x * 1.3) * 1.5 + Math.random() * 1.8);
+            for (let y = 0; y < h; y++) {
+              ctx.fillStyle = gCols[Math.floor(Math.random() * gCols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        });
+
+        // 3. Dirt: Deep rich chocolate loam
+        atlas['dirt'] = this.create16x16(ctx => {
+          const cols = ['#3d2516', '#4a2e1c', '#331e11', '#52331f', '#2a180e'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        });
+
+        // 4. Stone: Soft weathered mountain slate
+        atlas['stone'] = this.create16x16(ctx => {
+          const cols = ['#686a73', '#777983', '#5d5f67', '#838692'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#464850';
+          ctx.fillRect(0, 7, 16, 1);
+          ctx.fillRect(8, 0, 1, 7);
+          ctx.fillRect(4, 8, 1, 8);
+        });
+
+        // 5. Sand: Warm golden shoreline sand
+        atlas['sand'] = this.create16x16(ctx => {
+          const cols = ['#ddcb9d', '#d4c18f', '#e6d6ab', '#c9b480'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        });
+
+        // 6. Cherry Wood Log Side: Dark purplish-brown bark with vertical grain
+        atlas['log_side'] = this.create16x16(ctx => {
+          const cols = ['#38242c', '#2c1b22', '#452d37', '#25161d'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#1b0f14';
+          ctx.fillRect(3, 0, 1, 16);
+          ctx.fillRect(9, 0, 1, 16);
+          ctx.fillRect(14, 0, 1, 16);
+        });
+
+        // 7. Cherry Wood Log Top: Salmon peach interior rings
+        atlas['log_top'] = this.create16x16(ctx => {
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              const d = Math.hypot(x - 7.5, y - 7.5);
+              if (d > 7) ctx.fillStyle = '#25161d';
+              else if (d > 4.5) ctx.fillStyle = '#bd796a';
+              else if (d > 2.5) ctx.fillStyle = '#d38c7d';
+              else ctx.fillStyle = '#a66456';
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        });
+
+        // 8. Wood Planks: Warm cedar planks
+        atlas['planks'] = this.create16x16(ctx => {
+          const cols = ['#c79462', '#bc8755', '#d4a16f', '#af7c4a'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#6f4a24';
+          ctx.fillRect(0, 7, 16, 1);
+          ctx.fillRect(0, 15, 16, 1);
+          ctx.fillRect(7, 0, 1, 7);
+          ctx.fillRect(4, 8, 1, 7);
+        });
+
+        // 9. Light Pink Sakura Leaves: Crisp floral petals with petal clusters
+        atlas['leaves_light'] = this.create16x16(ctx => {
+          const cols = ['#ffb7ce', '#ffa3be', '#ffc6da', '#f58fad'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          const drawBlossom = (bx, by) => {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(bx, by, 1, 1);
+            ctx.fillStyle = '#ff7b9e';
+            ctx.fillRect(bx - 1, by, 1, 1);
+            ctx.fillRect(bx + 1, by, 1, 1);
+            ctx.fillRect(bx, by - 1, 1, 1);
+            ctx.fillRect(bx, by + 1, 1, 1);
+          };
+          drawBlossom(3, 4);
+          drawBlossom(11, 6);
+          drawBlossom(6, 12);
+        });
+
+        // 10. Deep Pink Sakura Leaves
+        atlas['leaves_deep'] = this.create16x16(ctx => {
+          const cols = ['#f06292', '#e91e63', '#ec407a', '#d81b60'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(4, 4, 1, 1);
+          ctx.fillRect(12, 10, 1, 1);
+          ctx.fillStyle = '#ff80ab';
+          ctx.fillRect(3, 4, 1, 1); ctx.fillRect(5, 4, 1, 1);
+        });
+
+        // 11. White Leaves (Snow White Sakura)
+        atlas['leaves_white'] = this.create16x16(ctx => {
+          const cols = ['#ffffff', '#fff0f3', '#fde2e8', '#fad2dc'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#ffb3c6';
+          ctx.fillRect(5, 5, 1, 1); ctx.fillRect(11, 11, 1, 1);
+        });
+
+        // 12. Lantern Block: Wooden lattice with warm glowing flame
+        atlas['lantern'] = this.create16x16(ctx => {
+          ctx.fillStyle = '#26170e';
+          ctx.fillRect(0, 0, 16, 16);
+          const fCols = ['#ff8800', '#ffa726', '#ffca28', '#fff9c4'];
+          for (let y = 2; y < 14; y++) {
+            for (let x = 2; x < 14; x++) {
+              ctx.fillStyle = fCols[Math.floor(Math.random() * fCols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#1c0f08';
+          ctx.fillRect(7, 2, 2, 12);
+          ctx.fillRect(2, 7, 12, 2);
+        });
+
+        // 13. Glass
+        atlas['glass'] = this.create16x16(ctx => {
+          ctx.clearRect(0, 0, 16, 16);
+          ctx.fillStyle = 'rgba(186, 230, 253, 0.65)';
+          ctx.fillRect(0, 0, 16, 1); ctx.fillRect(0, 15, 16, 1);
+          ctx.fillRect(0, 0, 1, 16); ctx.fillRect(15, 0, 1, 16);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.fillRect(3, 3, 3, 1); ctx.fillRect(4, 4, 1, 2);
+        });
+
+        // 14. Water: Crystal blue lake water
+        atlas['water'] = this.create16x16(ctx => {
+          const cols = ['#29b6f6', '#039be5', '#0288d1', '#4fc3f7'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        });
+
+        // 15. Torii Red: Vibrant Japanese vermilion
+        atlas['torii_red'] = this.create16x16(ctx => {
+          const cols = ['#c92a2a', '#d63333', '#b52020', '#e03e3e'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = 'rgba(0,0,0,0.2)';
+          ctx.fillRect(0, 15, 16, 1); ctx.fillRect(15, 0, 1, 16);
+        });
+
+        // 16. Slate Roof: Charcoal pagoda tiles
+        atlas['roof_slate'] = this.create16x16(ctx => {
+          const cols = ['#2d3238', '#383d45', '#24282d', '#424953'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#17191d';
+          ctx.fillRect(0, 7, 16, 1); ctx.fillRect(0, 15, 16, 1);
+        });
+
+        // 17. Ground Pink Petals Carpet (Scattered on grass floor)
+        atlas['ground_petals'] = this.create16x16(ctx => {
+          ctx.clearRect(0, 0, 16, 16);
+          const pCols = ['#ff8da7', '#ffb7ce', '#ffffff', '#f06292'];
+          // 4-petal cluster 1
+          ctx.fillStyle = pCols[0]; ctx.fillRect(3, 4, 2, 2);
+          ctx.fillStyle = pCols[1]; ctx.fillRect(2, 4, 1, 2); ctx.fillRect(5, 4, 1, 2);
+          ctx.fillStyle = '#fff'; ctx.fillRect(3, 3, 2, 1);
+          // Petal 2
+          ctx.fillStyle = pCols[1]; ctx.fillRect(11, 8, 2, 2);
+          ctx.fillStyle = pCols[3]; ctx.fillRect(10, 8, 1, 2); ctx.fillRect(13, 8, 1, 2);
+          // Petal 3
+          ctx.fillStyle = pCols[0]; ctx.fillRect(7, 12, 2, 2);
+          // Little green stems
+          ctx.fillStyle = '#4c8a1e';
+          ctx.fillRect(4, 6, 1, 1); ctx.fillRect(12, 10, 1, 1);
+        });
+
+        return atlas;
+      }
+    }
+
+    // =========================================================================
+    // 2. PROCEDURAL 2D PERLIN NOISE GENERATOR
+    // =========================================================================
+    class SimpleNoise {
+      constructor(seed = 42817) {
+        this.p = new Uint8Array(512);
+        const perm = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) perm[i] = i;
+        let s = seed;
+        for (let i = 255; i > 0; i--) {
+          s = (s * 16807 + 11) % 2147483647;
+          const j = s % (i + 1);
+          const t = perm[i]; perm[i] = perm[j]; perm[j] = t;
+        }
+        for (let i = 0; i < 512; i++) this.p[i] = perm[i & 255];
+      }
+
+      noise2D(x, y) {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+        const xf = x - Math.floor(x);
+        const yf = y - Math.floor(y);
+
+        const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+        const u = fade(xf);
+        const v = fade(yf);
+
+        const grad = (hash, gx, gy) => {
+          const h = hash & 7;
+          const u_val = h < 4 ? gx : gy;
+          const v_val = h < 4 ? gy : gx;
+          return ((h & 1) ? -u_val : u_val) + ((h & 2) ? -2.0 * v_val : 2.0 * v_val);
+        };
+
+        const aa = this.p[this.p[X] + Y];
+        const ab = this.p[this.p[X] + Y + 1];
+        const ba = this.p[this.p[X + 1] + Y];
+        const bb = this.p[this.p[X + 1] + Y + 1];
+
+        const x1 = THREE.MathUtils.lerp(grad(aa, xf, yf), grad(ba, xf - 1, yf), u);
+        const x2 = THREE.MathUtils.lerp(grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1), u);
+        return THREE.MathUtils.lerp(x1, x2, v) * 0.5 + 0.5;
+      }
+    }
+
+    // =========================================================================
+    // 3. VOXEL WORLD ENGINE (Greedy Face Culling & Vertex Ambient Occlusion)
+    // =========================================================================
+    const CHUNK_SIZE = 16;
+    const CHUNK_HEIGHT = 32;
+
+    class VoxelWorld {
+      constructor(scene, textures) {
+        this.scene = scene;
+        this.textures = textures;
+        this.noise = new SimpleNoise(31415);
+        this.chunks = new Map();
+        this.lanternLights = new Map();
+        this.modifiedBlocks = new Map();
+        this.structureBlocks = new Map();
+
+        this.lakeCenter = { x: -14, z: 12 };
+
+        this.initMaterials();
+        this.loadSavedWorld();
+      }
+
+      initMaterials() {
+        this.materials = {
+          [BLOCK_DEFS.GRASS]: [
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_top'].texture, roughness: 0.85 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85 })
+          ],
+          [BLOCK_DEFS.DIRT]: new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9 }),
+          [BLOCK_DEFS.STONE]: new THREE.MeshStandardMaterial({ map: this.textures['stone'].texture, roughness: 0.8 }),
+          [BLOCK_DEFS.SAND]: new THREE.MeshStandardMaterial({ map: this.textures['sand'].texture, roughness: 0.85 }),
+          [BLOCK_DEFS.WOOD_LOG]: [
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_top'].texture, roughness: 0.8 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_top'].texture, roughness: 0.8 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 }),
+            new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8 })
+          ],
+          [BLOCK_DEFS.WOOD_PLANKS]: new THREE.MeshStandardMaterial({ map: this.textures['planks'].texture, roughness: 0.75 }),
+          [BLOCK_DEFS.LEAVES_LIGHT]: new THREE.MeshStandardMaterial({
+            map: this.textures['leaves_light'].texture,
+            transparent: true,
+            alphaTest: 0.25,
+            roughness: 0.65,
+            side: THREE.DoubleSide
+          }),
+          [BLOCK_DEFS.LEAVES_DEEP]: new THREE.MeshStandardMaterial({
+            map: this.textures['leaves_deep'].texture,
+            transparent: true,
+            alphaTest: 0.25,
+            roughness: 0.65,
+            side: THREE.DoubleSide
+          }),
+          [BLOCK_DEFS.LEAVES_WHITE]: new THREE.MeshStandardMaterial({
+            map: this.textures['leaves_white'].texture,
+            transparent: true,
+            alphaTest: 0.25,
+            roughness: 0.65,
+            side: THREE.DoubleSide
+          }),
+          [BLOCK_DEFS.GLASS]: new THREE.MeshStandardMaterial({
+            map: this.textures['glass'].texture,
+            transparent: true,
+            opacity: 0.45,
+            roughness: 0.2
+          }),
+          [BLOCK_DEFS.LANTERN]: new THREE.MeshStandardMaterial({
+            map: this.textures['lantern'].texture,
+            emissive: new THREE.Color(0xffaa44),
+            emissiveIntensity: 0.9,
+            roughness: 0.4
+          }),
+          [BLOCK_DEFS.WATER]: new THREE.MeshStandardMaterial({
+            map: this.textures['water'].texture,
+            transparent: true,
+            opacity: 0.68,
+            roughness: 0.1,
+            metalness: 0.15
+          }),
+          [BLOCK_DEFS.TORII_RED]: new THREE.MeshStandardMaterial({ map: this.textures['torii_red'].texture, roughness: 0.7 }),
+          [BLOCK_DEFS.ROOF_SLATE]: new THREE.MeshStandardMaterial({ map: this.textures['roof_slate'].texture, roughness: 0.8 })
+        };
+      }
+
+      loadSavedWorld() {
+        try {
+          const raw = localStorage.getItem('cherry_blossom_voxel_edits');
+          if (raw) {
+            const data = JSON.parse(raw);
+            for (const [k, v] of Object.entries(data)) {
+              this.modifiedBlocks.set(k, v);
+            }
+          }
+        } catch (e) {
+          console.warn('Could not load saved edits:', e);
+        }
+      }
+
+      saveEdits() {
+        try {
+          const obj = {};
+          this.modifiedBlocks.forEach((v, k) => { obj[k] = v; });
+          localStorage.setItem('cherry_blossom_voxel_edits', JSON.stringify(obj));
+        } catch (e) {
+          console.warn('Could not save edits:', e);
+        }
+      }
+
+      resetWorld() {
+        this.modifiedBlocks.clear();
+        localStorage.removeItem('cherry_blossom_voxel_edits');
+        this.chunks.forEach(chunk => {
+          if (chunk.mesh) this.scene.remove(chunk.mesh);
+        });
+        this.chunks.clear();
+        this.structureBlocks.clear();
+        this.lanternLights.forEach(light => this.scene.remove(light));
+        this.lanternLights.clear();
+      }
+
+      getBlock(x, y, z) {
+        if (y < 0 || y >= CHUNK_HEIGHT) return BLOCK_DEFS.AIR;
+        const key = `${x},${y},${z}`;
+        if (this.modifiedBlocks.has(key)) return this.modifiedBlocks.get(key);
+        if (this.structureBlocks.has(key)) return this.structureBlocks.get(key);
+
+        const cx = Math.floor(x / CHUNK_SIZE);
+        const cz = Math.floor(z / CHUNK_SIZE);
+        const chunk = this.getOrCreateChunk(cx, cz);
+        const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        return chunk.blocks[lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
+      }
+
+      setBlock(x, y, z, blockId) {
+        if (y < 0 || y >= CHUNK_HEIGHT) return;
+        const key = `${x},${y},${z}`;
+        this.modifiedBlocks.set(key, blockId);
+        this.saveEdits();
+
+        const cx = Math.floor(x / CHUNK_SIZE);
+        const cz = Math.floor(z / CHUNK_SIZE);
+        const chunk = this.getOrCreateChunk(cx, cz);
+        const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+        chunk.blocks[lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE] = blockId;
+
+        if (blockId === BLOCK_DEFS.LANTERN) {
+          const light = new THREE.PointLight(0xffa726, 2.2, 18);
+          light.position.set(x + 0.5, y + 0.5, z + 0.5);
+          this.scene.add(light);
+          this.lanternLights.set(key, light);
+        } else if (this.lanternLights.has(key)) {
+          this.scene.remove(this.lanternLights.get(key));
+          this.lanternLights.delete(key);
+        }
+
+        this.buildChunkMesh(chunk);
+        if (lx === 0) this.buildChunkMesh(this.getOrCreateChunk(cx - 1, cz));
+        if (lx === CHUNK_SIZE - 1) this.buildChunkMesh(this.getOrCreateChunk(cx + 1, cz));
+        if (lz === 0) this.buildChunkMesh(this.getOrCreateChunk(cx, cz - 1));
+        if (lz === CHUNK_SIZE - 1) this.buildChunkMesh(this.getOrCreateChunk(cx, cz + 1));
+      }
+
+      getOrCreateChunk(cx, cz) {
+        const key = `${cx},${cz}`;
+        if (this.chunks.has(key)) return this.chunks.get(key);
+
+        const chunk = {
+          cx, cz,
+          blocks: new Uint8Array(CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT),
+          mesh: null
+        };
+        this.generateChunkTerrain(chunk);
+        this.chunks.set(key, chunk);
+        return chunk;
+      }
+
+      getTerrainHeight(wx, wz) {
+        const n1 = this.noise.noise2D(wx * 0.03, wz * 0.03) * 7.5;
+        const n2 = this.noise.noise2D(wx * 0.07, wz * 0.07) * 3.0;
+        let h = 11 + (n1 + n2);
+        const step = Math.floor(h);
+
+        const lakeDist = Math.hypot(wx - this.lakeCenter.x, (wz - this.lakeCenter.z) * 1.15);
+        if (lakeDist < 18) {
+          const depth = Math.floor((1.0 - lakeDist / 18) * 6.5);
+          return Math.max(4, step - depth);
+        }
+
+        return Math.min(CHUNK_HEIGHT - 6, Math.max(6, step));
+      }
+
+      generateChunkTerrain(chunk) {
+        const { cx, cz, blocks } = chunk;
+        const startX = cx * CHUNK_SIZE;
+        const startZ = cz * CHUNK_SIZE;
+        const waterLevel = 6;
+
+        for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+          const wz = startZ + lz;
+          for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+            const wx = startX + lx;
+            const baseH = this.getTerrainHeight(wx, wz);
+            const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
+
+            for (let y = 0; y < CHUNK_HEIGHT; y++) {
+              let block = BLOCK_DEFS.AIR;
+              if (y < baseH - 3) {
+                block = BLOCK_DEFS.STONE;
+              } else if (y < baseH) {
+                block = BLOCK_DEFS.DIRT;
+              } else if (y === baseH) {
+                if (baseH <= waterLevel + 1 && lakeDist < 20) {
+                  block = BLOCK_DEFS.SAND;
+                } else {
+                  block = BLOCK_DEFS.GRASS;
+                }
+              } else if (y <= waterLevel) {
+                block = BLOCK_DEFS.WATER;
+              }
+
+              if (block === BLOCK_DEFS.GRASS) {
+                const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
+                if (Math.abs(wx - pathCurve) < 1.6) {
+                  block = BLOCK_DEFS.STONE;
+                }
+              }
+
+              const idx = lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE;
+              blocks[idx] = block;
+            }
+          }
+        }
+
+        this.modifiedBlocks.forEach((val, k) => {
+          const [mx, my, mz] = k.split(',').map(Number);
+          if (Math.floor(mx / CHUNK_SIZE) === cx && Math.floor(mz / CHUNK_SIZE) === cz) {
+            const lx = ((mx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+            const lz = ((mz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+            blocks[lx + lz * CHUNK_SIZE + my * CHUNK_SIZE * CHUNK_SIZE] = val;
+          }
+        });
+      }
+
+      buildTreesAndLandmarks(cx, cz) {
+        const startX = cx * CHUNK_SIZE;
+        const startZ = cz * CHUNK_SIZE;
+
+        const setStructBlock = (wx, wy, wz, blockId) => {
+          if (wy < 0 || wy >= CHUNK_HEIGHT) return;
+          const key = `${wx},${wy},${wz}`;
+          if (!this.modifiedBlocks.has(key)) {
+            this.structureBlocks.set(key, blockId);
+            const targetChunk = this.getOrCreateChunk(Math.floor(wx / CHUNK_SIZE), Math.floor(wz / CHUNK_SIZE));
+            const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+            const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+            targetChunk.blocks[lx + lz * CHUNK_SIZE + wy * CHUNK_SIZE * CHUNK_SIZE] = blockId;
+          }
+        };
+
+        for (let lz = 3; lz < CHUNK_SIZE; lz += 7) {
+          for (let lx = 3; lx < CHUNK_SIZE; lx += 7) {
+            const wx = startX + lx;
+            const wz = startZ + lz;
+            const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
+            if (lakeDist < 16) continue;
+
+            const gy = this.getTerrainHeight(wx, wz);
+            if (gy < 7 || gy > CHUNK_HEIGHT - 12) continue;
+
+            const hash = Math.sin(wx * 45.123 + wz * 91.547) * 43758.5453;
+            const rand = hash - Math.floor(hash);
+
+            const trunkH = 5 + Math.floor(rand * 3);
+            const treeType = rand > 0.72 ? BLOCK_DEFS.LEAVES_WHITE : rand > 0.4 ? BLOCK_DEFS.LEAVES_DEEP : BLOCK_DEFS.LEAVES_LIGHT;
+
+            for (let ty = 1; ty <= trunkH; ty++) {
+              setStructBlock(wx, gy + ty, wz, BLOCK_DEFS.WOOD_LOG);
+            }
+
+            const branches = [
+              { dx: 1, dz: 1, by: trunkH - 1 },
+              { dx: -1, dz: 0, by: trunkH },
+              { dx: 0, dz: -1, by: trunkH + 1 }
+            ];
+            if (rand > 0.5) branches.push({ dx: -1, dz: 1, by: trunkH - 1 });
+
+            branches.forEach(b => {
+              setStructBlock(wx + b.dx, gy + b.by, wz + b.dz, BLOCK_DEFS.WOOD_LOG);
+              setStructBlock(wx + b.dx * 2, gy + b.by + 1, wz + b.dz * 2, BLOCK_DEFS.WOOD_LOG);
+            });
+
+            const canopyCenterY = gy + trunkH + 2;
+            for (let cdy = -2; cdy <= 2; cdy++) {
+              const layerRad = cdy === 2 ? 2 : cdy === 1 ? 4 : cdy === 0 ? 4 : 3;
+              for (let cdx = -layerRad; cdx <= layerRad; cdx++) {
+                for (let cdz = -layerRad; cdz <= layerRad; cdz++) {
+                  const dist2D = Math.hypot(cdx, cdz);
+                  if (dist2D <= layerRad + 0.35) {
+                    if (Math.abs(cdx) === layerRad && Math.abs(cdz) === layerRad) continue;
+                    if (cdx === 0 && cdz === 0 && cdy <= 0) continue;
+                    setStructBlock(wx + cdx, canopyCenterY + cdy, wz + cdz, treeType);
+                  }
+                }
+              }
+            }
+
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+              const hx = Math.round(Math.cos(angle) * 3);
+              const hz = Math.round(Math.sin(angle) * 3);
+              setStructBlock(wx + hx, canopyCenterY - 3, wz + hz, treeType);
+            }
+          }
+        }
+
+        if (cx === 0 && cz === 0) {
+          const tX = 8, tZ = 8, tY = this.getTerrainHeight(8, 8);
+          for (let sign of [-2, 2]) {
+            for (let ty = 0; ty <= 5; ty++) setStructBlock(tX + sign, tY + ty, tZ, BLOCK_DEFS.TORII_RED);
+          }
+          for (let bx = -3; bx <= 3; bx++) {
+            setStructBlock(tX + bx, tY + 4, tZ, BLOCK_DEFS.TORII_RED);
+            setStructBlock(tX + bx, tY + 6, tZ, BLOCK_DEFS.TORII_RED);
+            setStructBlock(tX + bx, tY + 6, tZ, BLOCK_DEFS.ROOF_SLATE);
+          }
+          setStructBlock(tX - 4, tY + 6, tZ, BLOCK_DEFS.ROOF_SLATE);
+          setStructBlock(tX + 4, tY + 6, tZ, BLOCK_DEFS.ROOF_SLATE);
+
+          const lanterns = [{ x: 5, z: -10 }, { x: -3, z: 2 }, { x: -8, z: 18 }, { x: 10, z: 16 }];
+          lanterns.forEach(lp => {
+            const ly = this.getTerrainHeight(lp.x, lp.z);
+            setStructBlock(lp.x, ly + 1, lp.z, BLOCK_DEFS.STONE);
+            setStructBlock(lp.x, ly + 2, lp.z, BLOCK_DEFS.LANTERN);
+            setStructBlock(lp.x, ly + 3, lp.z, BLOCK_DEFS.ROOF_SLATE);
+          });
+
+          for (let bz = 5; bz <= 19; bz++) {
+            const arch = Math.sin(((bz - 5) / 14) * Math.PI) * 1.5;
+            const by = 7 + Math.floor(arch);
+            for (let bx = -15; bx <= -13; bx++) {
+              setStructBlock(bx, by, bz, BLOCK_DEFS.WOOD_PLANKS);
+            }
+            setStructBlock(-16, by + 1, bz, BLOCK_DEFS.WOOD_PLANKS);
+            setStructBlock(-12, by + 1, bz, BLOCK_DEFS.WOOD_PLANKS);
+          }
+        }
+      }
+
+      buildChunkMesh(chunk) {
+        if (chunk.mesh) {
+          this.scene.remove(chunk.mesh);
+          chunk.mesh.geometry.dispose();
+          chunk.mesh = null;
+        }
+
+        const { cx, cz } = chunk;
+        const startX = cx * CHUNK_SIZE;
+        const startZ = cz * CHUNK_SIZE;
+
+        const faceDirs = [
+          [ 1,  0,  0], [-1,  0,  0],
+          [ 0,  1,  0], [ 0, -1,  0],
+          [ 0,  0,  1], [ 0,  0, -1]
+        ];
+
+        const faceVerts = [
+          [[1,0,0], [1,1,0], [1,1,1], [1,0,1]],
+          [[0,0,1], [0,1,1], [0,1,0], [0,0,0]],
+          [[0,1,1], [1,1,1], [1,1,0], [0,1,0]],
+          [[0,0,0], [1,0,0], [1,0,1], [0,0,1]],
+          [[1,0,1], [1,1,1], [0,1,1], [0,0,1]],
+          [[0,0,0], [0,1,0], [1,1,0], [1,0,0]]
+        ];
+
+        const isTransparent = (b) => {
+          return b === BLOCK_DEFS.AIR || b === BLOCK_DEFS.WATER ||
+                 b === BLOCK_DEFS.GLASS || b === BLOCK_DEFS.LEAVES_LIGHT ||
+                 b === BLOCK_DEFS.LEAVES_DEEP || b === BLOCK_DEFS.LEAVES_WHITE;
+        };
+
+        const blockBuckets = {};
+
+        for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+          const wz = startZ + lz;
+          for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+            const wx = startX + lx;
+            for (let y = 0; y < CHUNK_HEIGHT; y++) {
+              const b = chunk.blocks[lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE];
+              if (b === BLOCK_DEFS.AIR) continue;
+
+              for (let f = 0; f < 6; f++) {
+                const [dx, dy, dz] = faceDirs[f];
+                const nx = wx + dx;
+                const ny = y + dy;
+                const nz = wz + dz;
+                const neighbor = this.getBlock(nx, ny, nz);
+
+                let shouldRender = false;
+                if (b === BLOCK_DEFS.WATER) {
+                  shouldRender = (neighbor === BLOCK_DEFS.AIR);
+                } else if (isTransparent(b)) {
+                  shouldRender = (neighbor !== b);
+                } else {
+                  shouldRender = isTransparent(neighbor);
+                }
+
+                if (shouldRender) {
+                  let subMatIdx = 0;
+                  if (b === BLOCK_DEFS.GRASS) {
+                    subMatIdx = f === 2 ? 2 : f === 3 ? 3 : 0;
+                  } else if (b === BLOCK_DEFS.WOOD_LOG) {
+                    subMatIdx = (f === 2 || f === 3) ? 2 : 0;
+                  }
+
+                  const bucketKey = `${b}_${subMatIdx}`;
+                  if (!blockBuckets[bucketKey]) {
+                    blockBuckets[bucketKey] = {
+                      blockId: b,
+                      subMatIdx,
+                      positions: [],
+                      normals: [],
+                      uvs: [],
+                      colors: []
+                    };
+                  }
+                  const bucket = blockBuckets[bucketKey];
+
+                  const verts = faceVerts[f];
+                  const norm = faceDirs[f];
+
+                  const computeAO = (vx, vy, vz) => {
+                    const cx1 = wx + vx;
+                    const cy1 = y + vy;
+                    const cz1 = wz + vz;
+                    let occ = 0;
+                    if (this.getBlock(cx1, cy1, wz) !== BLOCK_DEFS.AIR) occ++;
+                    if (this.getBlock(wx, cy1, cz1) !== BLOCK_DEFS.AIR) occ++;
+                    if (this.getBlock(cx1, cy1, cz1) !== BLOCK_DEFS.AIR) occ++;
+                    return 1.0 - Math.min(occ, 3) * 0.18;
+                  };
+
+                  const ao = [
+                    computeAO(verts[0][0], verts[0][1], verts[0][2]),
+                    computeAO(verts[1][0], verts[1][1], verts[1][2]),
+                    computeAO(verts[2][0], verts[2][1], verts[2][2]),
+                    computeAO(verts[3][0], verts[3][1], verts[3][2])
+                  ];
+
+                  const quadIndices = [0, 1, 2, 0, 2, 3];
+                  const quadUVs = [[0,0], [0,1], [1,1], [0,0], [1,1], [1,0]];
+
+                  for (let i = 0; i < 6; i++) {
+                    const vi = quadIndices[i];
+                    bucket.positions.push(wx + verts[vi][0], y + verts[vi][1], wz + verts[vi][2]);
+                    bucket.normals.push(norm[0], norm[1], norm[2]);
+                    bucket.uvs.push(quadUVs[i][0], quadUVs[i][1]);
+                    const shade = ao[vi];
+                    bucket.colors.push(shade, shade, shade);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        const allPos = [];
+        const allNorm = [];
+        const allUV = [];
+        const allCol = [];
+        const matList = [];
+        const groups = [];
+
+        let vertOffset = 0;
+        for (const bucketKey in blockBuckets) {
+          const b = blockBuckets[bucketKey];
+          let mat = this.materials[b.blockId];
+          if (Array.isArray(mat)) mat = mat[b.subMatIdx];
+
+          let matIdx = matList.indexOf(mat);
+          if (matIdx === -1) {
+            matIdx = matList.length;
+            matList.push(mat);
+          }
+
+          const count = b.positions.length / 3;
+          groups.push({ start: vertOffset, count, materialIndex: matIdx });
+          vertOffset += count;
+
+          for (let i = 0; i < b.positions.length; i++) allPos.push(b.positions[i]);
+          for (let i = 0; i < b.normals.length; i++) allNorm.push(b.normals[i]);
+          for (let i = 0; i < b.uvs.length; i++) allUV.push(b.uvs[i]);
+          for (let i = 0; i < b.colors.length; i++) allCol.push(b.colors[i]);
+        }
+
+        if (allPos.length === 0) return;
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(allPos, 3));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(allNorm, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(allUV, 2));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(allCol, 3));
+
+        groups.forEach(g => geo.addGroup(g.start, g.count, g.materialIndex));
+
+        const mesh = new THREE.Mesh(geo, matList.length === 1 ? matList[0] : matList);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        this.scene.add(mesh);
+        chunk.mesh = mesh;
+      }
+
+      updateAround(playerX, playerZ, radiusChunks = 3) {
+        const pcx = Math.floor(playerX / CHUNK_SIZE);
+        const pcz = Math.floor(playerZ / CHUNK_SIZE);
+
+        for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
+          for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
+            const cx = pcx + dx;
+            const cz = pcz + dz;
+            const key = `${cx},${cz}`;
+            if (!this.chunks.has(key)) {
+              this.getOrCreateChunk(cx, cz);
+              this.buildTreesAndLandmarks(cx, cz);
+            }
+          }
+        }
+
+        for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
+          for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
+            const cx = pcx + dx;
+            const cz = pcz + dz;
+            const chunk = this.getOrCreateChunk(cx, cz);
+            if (!chunk.mesh) {
+              this.buildChunkMesh(chunk);
+            }
+          }
+        }
+      }
+    }
+
+    // =========================================================================
+    // 4. PROCEDURAL WEB AUDIO API SOUND ENGINE (Zero External Assets)
+    // =========================================================================
+    class ProceduralAudio {
+      constructor() {
+        this.ctx = null;
+        this.masterGain = null;
+        this.isEnabled = false;
+        this.volume = 0.7;
+        this.isNight = false;
+        this.kotoNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+      }
+
+      init() {
+        if (this.ctx) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+
+        this.startAmbientWind();
+        this.startKotoMelody();
+        this.startNaturalCreatures();
+        this.isEnabled = true;
+      }
+
+      setVolume(val) {
+        this.volume = val;
+        if (this.masterGain && this.ctx) {
+          this.masterGain.gain.setTargetAtTime(this.isEnabled ? val : 0, this.ctx.currentTime, 0.05);
+        }
+      }
+
+      toggleMute() {
+        this.isEnabled = !this.isEnabled;
+        if (this.masterGain && this.ctx) {
+          this.masterGain.gain.setTargetAtTime(this.isEnabled ? this.volume : 0, this.ctx.currentTime, 0.05);
+        }
+        return this.isEnabled;
+      }
+
+      startAmbientWind() {
+        const bufferSize = 2 * this.ctx.sampleRate;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          b0 = 0.99886 * b0 + white * 0.0555179;
+          b1 = 0.99332 * b1 + white * 0.0750759;
+          b2 = 0.96900 * b2 + white * 0.1538520;
+          output[i] = (b0 + b1 + b2) * 0.12;
+        }
+
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(420, this.ctx.currentTime);
+
+        const gainNode = this.ctx.createGain();
+        gainNode.gain.setValueAtTime(0.08, this.ctx.currentTime);
+
+        whiteNoise.connect(filter);
+        filter.connect(gainNode);
+        gainNode.connect(this.masterGain);
+        whiteNoise.start();
+
+        setInterval(() => {
+          if (!this.ctx || !this.isEnabled) return;
+          const t = this.ctx.currentTime;
+          const gust = 0.06 + Math.random() * 0.12;
+          filter.frequency.setTargetAtTime(350 + Math.random() * 500, t, 1.8);
+          gainNode.gain.setTargetAtTime(gust, t, 2.0);
+          setTimeout(() => {
+            if (this.ctx) {
+              filter.frequency.setTargetAtTime(320, this.ctx.currentTime, 3.0);
+              gainNode.gain.setTargetAtTime(0.06, this.ctx.currentTime, 3.5);
+            }
+          }, 3500);
+        }, 12000);
+      }
+
+      startKotoMelody() {
+        const playArpeggio = () => {
+          if (!this.ctx || !this.isEnabled) return;
+          const count = 3 + Math.floor(Math.random() * 4);
+          let delay = 0;
+          for (let i = 0; i < count; i++) {
+            const note = this.kotoNotes[Math.floor(Math.random() * this.kotoNotes.length)];
+            setTimeout(() => {
+              if (this.ctx && this.isEnabled) this.playPluck(note);
+            }, delay * 1000);
+            delay += 0.28 + Math.random() * 0.35;
+          }
+        };
+
+        setInterval(playArpeggio, 8000);
+      }
+
+      playPluck(freq) {
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.045, t + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 2.3);
+      }
+
+      startNaturalCreatures() {
+        setInterval(() => {
+          if (!this.ctx || !this.isEnabled) return;
+          if (this.isNight) {
+            this.playCricket();
+          } else {
+            if (Math.random() > 0.4) this.playBirdChirp();
+          }
+        }, 4500);
+      }
+
+      playBirdChirp() {
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2600 + Math.random() * 400, t);
+        osc.frequency.exponentialRampToValueAtTime(3800 + Math.random() * 600, t + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(2200, t + 0.16);
+
+        g.gain.setValueAtTime(0.02, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.2);
+      }
+
+      playCricket() {
+        const t = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(4500, t);
+
+        g.gain.setValueAtTime(0.015, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(t);
+        osc.stop(t + 0.08);
+      }
+
+      playFootstep(blockId) {
+        if (!this.ctx || !this.isEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+
+        let baseFreq = 95;
+        let toneType = 'triangle';
+        if (blockId === BLOCK_DEFS.STONE) { baseFreq = 260; toneType = 'sine'; }
+        else if (blockId === BLOCK_DEFS.WOOD_PLANKS || blockId === BLOCK_DEFS.WOOD_LOG) { baseFreq = 160; toneType = 'triangle'; }
+        else if (blockId === BLOCK_DEFS.SAND) { baseFreq = 70; toneType = 'square'; }
+
+        osc.type = toneType;
+        osc.frequency.setValueAtTime(baseFreq + Math.random() * 20, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+
+        g.gain.setValueAtTime(0.05, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      }
+
+      playBlockBreak() {
+        if (!this.ctx || !this.isEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
+
+        g.gain.setValueAtTime(0.08, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+
+      playBlockPlace() {
+        if (!this.ctx || !this.isEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(260, now);
+        osc.frequency.exponentialRampToValueAtTime(80, now + 0.09);
+
+        g.gain.setValueAtTime(0.07, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+
+        osc.connect(g);
+        g.connect(this.masterGain);
+        osc.start(now);
+        osc.stop(now + 0.11);
+      }
+    }
+
+    // =========================================================================
+    // 5. GROUND FLOWERS & FALLING CHERRY PETAL PARTICLES
+    // =========================================================================
+    class GroundPetalSystem {
+      constructor(scene, textureAtlas, world) {
+        this.scene = scene;
+        this.world = world;
+        this.count = 900;
+
+        const geo = new THREE.PlaneGeometry(0.85, 0.85);
+        geo.rotateX(-Math.PI / 2);
+
+        const mat = new THREE.MeshBasicMaterial({
+          map: textureAtlas['ground_petals'].texture,
+          transparent: true,
+          alphaTest: 0.15,
+          side: THREE.DoubleSide,
+          depthWrite: false
+        });
+
+        this.mesh = new THREE.InstancedMesh(geo, mat, this.count);
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        scene.add(this.mesh);
+
+        this.spawnAround(0, 0);
+      }
+
+      spawnAround(px, pz) {
+        const dummy = new THREE.Object3D();
+        let idx = 0;
+        const range = 50;
+
+        for (let x = px - range; x <= px + range && idx < this.count; x += 2.2) {
+          for (let z = pz - range; z <= pz + range && idx < this.count; z += 2.2) {
+            const rx = Math.floor(x) + 0.5;
+            const rz = Math.floor(z) + 0.5;
+            const hash = Math.sin(rx * 12.9898 + rz * 78.233) * 43758.5453;
+            if (hash - Math.floor(hash) > 0.42) {
+              const gy = this.world.getTerrainHeight(rx, rz);
+              if (gy >= 7) {
+                dummy.position.set(rx + (Math.random() - 0.5) * 0.8, gy + 1.01, rz + (Math.random() - 0.5) * 0.8);
+                dummy.rotation.y = Math.random() * Math.PI * 2;
+                const s = 0.7 + Math.random() * 0.45;
+                dummy.scale.set(s, 1, s);
+                dummy.updateMatrix();
+                this.mesh.setMatrixAt(idx++, dummy.matrix);
+              }
+            }
+          }
+        }
+        this.mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+
+    class PetalSystem {
+      constructor(scene, count = 350) {
+        this.scene = scene;
+        this.count = count;
+        this.windAngle = 0.5;
+        this.windSpeed = 1.0;
+
+        const geo = new THREE.PlaneGeometry(0.25, 0.25);
+        const mat = new THREE.MeshBasicMaterial({
+          color: 0xffadc0,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false
+        });
+
+        this.mesh = new THREE.InstancedMesh(geo, mat, count);
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        scene.add(this.mesh);
+
+        this.petals = [];
+        this.initPetals();
+
+        this.ripples = [];
+        this.rippleGeo = new THREE.RingGeometry(0.08, 0.16, 16);
+        this.rippleGeo.rotateX(-Math.PI / 2);
+        this.rippleMat = new THREE.MeshBasicMaterial({
+          color: 0x90caf9,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.7,
+          depthWrite: false
+        });
+        this.rippleGroup = new THREE.Group();
+        scene.add(this.rippleGroup);
+      }
+
+      initPetals() {
+        this.petals = [];
+        for (let i = 0; i < this.count; i++) {
+          this.petals.push({
+            pos: new THREE.Vector3(
+              (Math.random() - 0.5) * 80,
+              12 + Math.random() * 18,
+              (Math.random() - 0.5) * 80
+            ),
+            rot: new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI),
+            rotSpeed: new THREE.Vector3(
+              (Math.random() - 0.5) * 2.5,
+              (Math.random() - 0.5) * 2.5,
+              (Math.random() - 0.5) * 2.5
+            ),
+            fallSpeed: 0.8 + Math.random() * 0.8,
+            driftSeed: Math.random() * 100,
+            floatingTime: 0
+          });
+        }
+      }
+
+      burstAt(pos, count = 35) {
+        for (let i = 0; i < count; i++) {
+          const p = this.petals[Math.floor(Math.random() * this.petals.length)];
+          p.pos.set(
+            pos.x + (Math.random() - 0.5) * 3,
+            pos.y + (Math.random() - 0.5) * 2,
+            pos.z + (Math.random() - 0.5) * 3
+          );
+          p.fallSpeed = 0.5 + Math.random() * 1.5;
+        }
+      }
+
+      update(dt, playerPos) {
+        const dummy = new THREE.Object3D();
+        const waterY = 6.02;
+
+        for (let i = 0; i < this.petals.length; i++) {
+          const p = this.petals[i];
+
+          p.pos.y -= p.fallSpeed * dt;
+          p.pos.x += Math.cos(this.windAngle) * this.windSpeed * dt + Math.sin(p.driftSeed + Date.now() * 0.002) * 0.4 * dt;
+          p.pos.z += Math.sin(this.windAngle) * this.windSpeed * dt;
+
+          p.rot.x += p.rotSpeed.x * dt;
+          p.rot.y += p.rotSpeed.y * dt;
+          p.rot.z += p.rotSpeed.z * dt;
+
+          if (p.pos.y <= waterY) {
+            p.pos.y = waterY;
+            p.floatingTime += dt;
+            if (p.floatingTime > 2.5 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 55) {
+              p.pos.set(
+                playerPos.x + (Math.random() - 0.5) * 70,
+                14 + Math.random() * 16,
+                playerPos.z + (Math.random() - 0.5) * 70
+              );
+              p.floatingTime = 0;
+            }
+          }
+
+          if (p.pos.y < 3.0 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 65) {
+            p.pos.set(
+              playerPos.x + (Math.random() - 0.5) * 70,
+              14 + Math.random() * 16,
+              playerPos.z + (Math.random() - 0.5) * 70
+            );
+            p.floatingTime = 0;
+          }
+
+          dummy.position.copy(p.pos);
+          dummy.rotation.copy(p.rot);
+          dummy.updateMatrix();
+          this.mesh.setMatrixAt(i, dummy.matrix);
+        }
+        this.mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+
+    // =========================================================================
+    // 6. 3RD-PERSON VOXEL CHARACTER (Original Pink Kimono)
+    // =========================================================================
+    class VoxelCharacter {
+      constructor(scene) {
+        this.group = new THREE.Group();
+        this.visible = false;
+        this.walkCycle = 0;
+
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xffd1b3, roughness: 0.6 });
+        const hairMat = new THREE.MeshStandardMaterial({ color: 0x211717, roughness: 0.8 });
+        const kimonoMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.7 });
+        const obiMat = new THREE.MeshStandardMaterial({ color: 0x9333ea, roughness: 0.7 });
+        const pantsMat = new THREE.MeshStandardMaterial({ color: 0x3b1d28, roughness: 0.8 });
+
+        const headGeo = new THREE.BoxGeometry(0.48, 0.48, 0.48);
+        this.head = new THREE.Mesh(headGeo, skinMat);
+        this.head.position.y = 1.38;
+        this.group.add(this.head);
+
+        const hairGeo = new THREE.BoxGeometry(0.52, 0.22, 0.52);
+        const hair = new THREE.Mesh(hairGeo, hairMat);
+        hair.position.y = 0.16;
+        this.head.add(hair);
+
+        const bodyGeo = new THREE.BoxGeometry(0.52, 0.65, 0.32);
+        this.body = new THREE.Mesh(bodyGeo, kimonoMat);
+        this.body.position.y = 0.82;
+        this.group.add(this.body);
+
+        const obiGeo = new THREE.BoxGeometry(0.54, 0.16, 0.34);
+        const obi = new THREE.Mesh(obiGeo, obiMat);
+        this.body.add(obi);
+
+        const armGeo = new THREE.BoxGeometry(0.18, 0.55, 0.18);
+        this.armL = new THREE.Mesh(armGeo, kimonoMat);
+        this.armL.position.set(-0.36, 0.82, 0);
+        this.armR = new THREE.Mesh(armGeo, kimonoMat);
+        this.armR.position.set(0.36, 0.82, 0);
+        this.group.add(this.armL);
+        this.group.add(this.armR);
+
+        const legGeo = new THREE.BoxGeometry(0.2, 0.55, 0.2);
+        this.legL = new THREE.Mesh(legGeo, pantsMat);
+        this.legL.position.set(-0.14, 0.27, 0);
+        this.legR = new THREE.Mesh(legGeo, pantsMat);
+        this.legR.position.set(0.14, 0.27, 0);
+        this.group.add(this.legL);
+        this.group.add(this.legR);
+
+        scene.add(this.group);
+      }
+
+      update(pos, yaw, isMoving, dt) {
+        this.group.position.copy(pos);
+        this.group.rotation.y = yaw;
+        this.group.visible = this.visible;
+
+        if (isMoving) {
+          this.walkCycle += dt * 10;
+          const swing = Math.sin(this.walkCycle) * 0.45;
+          this.legL.rotation.x = swing;
+          this.legR.rotation.x = -swing;
+          this.armL.rotation.x = -swing;
+          this.armR.rotation.x = swing;
+        } else {
+          this.legL.rotation.x = 0;
+          this.legR.rotation.x = 0;
+          this.armL.rotation.x = 0;
+          this.armR.rotation.x = 0;
+        }
+      }
+    }
+
+    // =========================================================================
+    // 7. MAIN ENGINE ORCHESTRATOR
+    // =========================================================================
+    class CherrySanctuary {
+      constructor() {
+        this.viewport = document.getElementById('viewport');
+        this.clock = new THREE.Clock();
+
+        this.audio = new ProceduralAudio();
+        this.textures = TextureGenerator.generateAll();
+
+        this.isThirdPerson = false;
+        this.isFlyMode = false;
+        this.isCinematicTour = false;
+        this.timeOfDay = 'day';
+        this.tourTime = 0;
+        this.activeSlot = 0;
+
+        this.player = {
+          pos: new THREE.Vector3(2, 14, -14),
+          vel: new THREE.Vector3(),
+          yaw: -0.6,
+          pitch: -0.15,
+          isGrounded: false,
+          isInWater: false,
+          height: 1.8,
+          radius: 0.35,
+          speed: 6.0,
+          runSpeed: 10.5
+        };
+
+        this.inputKeys = {};
+        this.mouseAim = new THREE.Vector2();
+
+        this.initThree();
+        this.initWorld();
+        this.initCharacter();
+        this.initPetalsAndLighting();
+        this.initHotbarUI();
+        this.initEventListeners();
+        this.initHaikuCycler();
+
+        this.animate = this.animate.bind(this);
+        requestAnimationFrame(this.animate);
+      }
+
+      initThree() {
+        this.scene = new THREE.Scene();
+        this.scene.fog = new THREE.FogExp2(0xfcd6df, 0.014);
+
+        this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 400);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.viewport.appendChild(this.renderer.domElement);
+      }
+
+      initWorld() {
+        this.world = new VoxelWorld(this.scene, this.textures);
+        this.world.updateAround(this.player.pos.x, this.player.pos.z, 3);
+
+        this.groundPetals = new GroundPetalSystem(this.scene, this.textures, this.world);
+
+        const boxGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+        const wireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
+        this.highlightBox = new THREE.Mesh(boxGeo, wireMat);
+        this.highlightBox.visible = false;
+        this.scene.add(this.highlightBox);
+      }
+
+      initCharacter() {
+        this.character = new VoxelCharacter(this.scene);
+      }
+
+      initPetalsAndLighting() {
+        this.petals = new PetalSystem(this.scene, 350);
+
+        this.sunLight = new THREE.DirectionalLight(0xfff3db, 1.9);
+        this.sunLight.castShadow = true;
+        this.sunLight.shadow.mapSize.width = 1024;
+        this.sunLight.shadow.mapSize.height = 1024;
+        this.sunLight.shadow.bias = -0.0005;
+        this.scene.add(this.sunLight);
+
+        this.ambientLight = new THREE.AmbientLight(0xffd4de, 0.75);
+        this.scene.add(this.ambientLight);
+
+        const ffGeo = new THREE.BufferGeometry();
+        const ffPos = new Float32Array(50 * 3);
+        for (let i = 0; i < 50; i++) {
+          ffPos[i * 3] = (Math.random() - 0.5) * 50;
+          ffPos[i * 3 + 1] = 6 + Math.random() * 6;
+          ffPos[i * 3 + 2] = (Math.random() - 0.5) * 50;
+        }
+        ffGeo.setAttribute('position', new THREE.BufferAttribute(ffPos, 3));
+        this.fireflies = new THREE.Points(ffGeo, new THREE.PointsMaterial({
+          color: 0x7ef29d,
+          size: 0.45,
+          transparent: true,
+          opacity: 0.0,
+          blending: THREE.AdditiveBlending
+        }));
+        this.scene.add(this.fireflies);
+
+        this.setTimeOfDay('day');
+      }
+
+      setTimeOfDay(mode) {
+        this.timeOfDay = mode;
+        this.audio.isNight = (mode === 'night');
+
+        let skyCol, fogCol, sunCol, ambCol, sunInt, ffOpacity;
+        const bloomEl = document.getElementById('bloom-overlay');
+
+        if (mode === 'day') {
+          skyCol = 0xffe2ea;
+          fogCol = 0xfcd6df;
+          sunCol = 0xfff3db;
+          ambCol = 0xffd4de;
+          sunInt = 1.9;
+          ffOpacity = 0.0;
+          this.sunLight.position.set(65, 80, 45);
+          bloomEl.style.opacity = '0.9';
+        } else if (mode === 'sunset') {
+          skyCol = 0xf472b6;
+          fogCol = 0xfbcfe8;
+          sunCol = 0xff9966;
+          ambCol = 0x663d5e;
+          sunInt = 1.3;
+          ffOpacity = 0.2;
+          this.sunLight.position.set(120, 25, 40);
+          bloomEl.style.opacity = '0.6';
+        } else {
+          skyCol = 0x0a0c16;
+          fogCol = 0x11162b;
+          sunCol = 0xa5b4fc;
+          ambCol = 0x1e2442;
+          sunInt = 0.4;
+          ffOpacity = 0.85;
+          this.sunLight.position.set(-60, 90, -40);
+          bloomEl.style.opacity = '0.1';
+        }
+
+        this.scene.background = new THREE.Color(skyCol);
+        this.scene.fog.color.setHex(fogCol);
+        this.sunLight.color.setHex(sunCol);
+        this.sunLight.intensity = sunInt;
+        this.ambientLight.color.setHex(ambCol);
+        this.fireflies.material.opacity = ffOpacity;
+      }
+
+      initHotbarUI() {
+        const bar = document.getElementById('hotbar');
+        bar.innerHTML = '';
+        HOTBAR_ITEMS.forEach((item, idx) => {
+          const slot = document.createElement('div');
+          slot.className = `hotbar-slot ${idx === this.activeSlot ? 'active' : ''}`;
+          slot.title = item.name;
+
+          const key = document.createElement('div');
+          key.className = 'slot-key';
+          key.textContent = idx + 1;
+          slot.appendChild(key);
+
+          let texKey = 'grass_top';
+          if (item.id === BLOCK_DEFS.DIRT) texKey = 'dirt';
+          else if (item.id === BLOCK_DEFS.STONE) texKey = 'stone';
+          else if (item.id === BLOCK_DEFS.WOOD_LOG) texKey = 'log_side';
+          else if (item.id === BLOCK_DEFS.WOOD_PLANKS) texKey = 'planks';
+          else if (item.id === BLOCK_DEFS.LEAVES_LIGHT) texKey = 'leaves_light';
+          else if (item.id === BLOCK_DEFS.LEAVES_DEEP) texKey = 'leaves_deep';
+          else if (item.id === BLOCK_DEFS.LEAVES_WHITE) texKey = 'leaves_white';
+          else if (item.id === BLOCK_DEFS.LANTERN) texKey = 'lantern';
+
+          const icon = this.textures[texKey].canvas.cloneNode();
+          slot.appendChild(icon);
+
+          slot.addEventListener('click', () => this.selectSlot(idx));
+          bar.appendChild(slot);
+        });
+      }
+
+      selectSlot(idx) {
+        this.activeSlot = (idx + HOTBAR_ITEMS.length) % HOTBAR_ITEMS.length;
+        document.querySelectorAll('.hotbar-slot').forEach((s, i) => {
+          s.classList.toggle('active', i === this.activeSlot);
+        });
+        this.showToast(`Đã chọn: ${HOTBAR_ITEMS[this.activeSlot].name}`);
+      }
+
+      initHaikuCycler() {
+        const haikus = [
+          { text: "Hoa anh đào rơi / Trên thềm cỏ xanh ngắt / Gió thoảng hương thiền...", author: "Matsuo Bashō" },
+          { text: "Dưới bóng hoa đào / Người lạ cũng hóa / Thành bạn tri âm...", author: "Kobayashi Issa" },
+          { text: "Gió xuân mơn man / Cánh hồng khẽ chạm / Tiếng chuông ngân vang...", author: "Yosa Buson" },
+          { text: "Một cánh hoa bay / Đậu trên cầu gỗ / Chiều dần buông trôi...", author: "Kaga no Chiyo" },
+          { text: "Bóng trăng qua hồ / Hoa đào rắc lối / Thảnh thơi tâm thiền...", author: "Ryōkan Taigu" }
+        ];
+
+        let hIdx = 0;
+        const banner = document.getElementById('haiku-banner');
+        const hText = document.getElementById('haiku-text');
+        const hAuth = document.getElementById('haiku-author');
+
+        const cycle = () => {
+          banner.classList.remove('visible');
+          setTimeout(() => {
+            const h = haikus[hIdx % haikus.length];
+            hText.textContent = `"${h.text}"`;
+            hAuth.textContent = `— ${h.author}`;
+            banner.classList.add('visible');
+            hIdx++;
+          }, 1200);
+        };
+
+        cycle();
+        setInterval(cycle, 45000);
+      }
+
+      initEventListeners() {
+        document.getElementById('btn-enter').addEventListener('click', () => {
+          document.getElementById('welcome-screen').classList.add('hidden');
+          this.audio.init();
+          this.requestPointerLock();
+        });
+
+        document.getElementById('btn-audio').addEventListener('click', () => {
+          const on = this.audio.toggleMute();
+          document.getElementById('btn-audio').textContent = on ? '🔊 Nhạc: BẬT' : '🔇 Nhạc: TẮT';
+        });
+
+        document.getElementById('btn-tour').addEventListener('click', () => {
+          this.isCinematicTour = !this.isCinematicTour;
+          document.getElementById('btn-tour').classList.toggle('active', this.isCinematicTour);
+          this.showToast(this.isCinematicTour ? 'Bật Chế Độ Tham Quan Tự Động' : 'Đã Thoát Tham Quan');
+        });
+
+        document.getElementById('btn-cam').addEventListener('click', () => {
+          this.isThirdPerson = !this.isThirdPerson;
+          this.character.visible = this.isThirdPerson;
+          document.getElementById('btn-cam').classList.toggle('active', this.isThirdPerson);
+          this.showToast(this.isThirdPerson ? 'Góc Nhìn Thứ 3 (Third Person)' : 'Góc Nhìn Thứ Nhất (FPS)');
+        });
+
+        document.getElementById('btn-fly').addEventListener('click', () => {
+          this.isFlyMode = !this.isFlyMode;
+          document.getElementById('btn-fly').textContent = this.isFlyMode ? '🕊️ Bay: BẬT' : '🕊️ Bay: TẮT';
+          document.getElementById('btn-fly').classList.toggle('active', this.isFlyMode);
+          this.showToast(this.isFlyMode ? 'Đã bật Chế Độ Bay' : 'Đã tắt Bay');
+        });
+
+        document.getElementById('btn-time').addEventListener('click', () => {
+          const modes = ['day', 'sunset', 'night'];
+          const labels = { day: '☀️ Ban Ngày', sunset: '🌅 Hoàng Hôn', night: '🌙 Ban Đêm' };
+          const next = modes[(modes.indexOf(this.timeOfDay) + 1) % modes.length];
+          this.setTimeOfDay(next);
+          document.getElementById('btn-time').textContent = labels[next];
+        });
+
+        document.getElementById('btn-menu').addEventListener('click', () => {
+          this.togglePauseMenu(true);
+        });
+
+        document.getElementById('btn-resume').addEventListener('click', () => {
+          this.togglePauseMenu(false);
+          this.requestPointerLock();
+        });
+
+        document.getElementById('btn-reset-world').addEventListener('click', () => {
+          if (confirm('Đặt lại toàn bộ thế giới về nguyên bản?')) {
+            this.world.resetWorld();
+            this.world.updateAround(this.player.pos.x, this.player.pos.z, 3);
+            this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
+            this.showToast('Đã làm mới thế giới!');
+            this.togglePauseMenu(false);
+          }
+        });
+
+        document.getElementById('btn-fullscreen').addEventListener('click', () => {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+          else document.exitFullscreen();
+        });
+
+        document.getElementById('set-time').addEventListener('change', (e) => this.setTimeOfDay(e.target.value));
+        document.getElementById('set-volume').addEventListener('input', (e) => this.audio.setVolume(e.target.value / 100));
+
+        window.addEventListener('keydown', (e) => {
+          this.inputKeys[e.code] = true;
+
+          if (e.code >= 'Digit1' && e.code <= 'Digit9') {
+            this.selectSlot(parseInt(e.code.replace('Digit', '')) - 1);
+          } else if (e.code === 'KeyF') {
+            this.isFlyMode = !this.isFlyMode;
+            document.getElementById('btn-fly').textContent = this.isFlyMode ? '🕊️ Bay: BẬT' : '🕊️ Bay: TẮT';
+            this.showToast(this.isFlyMode ? 'Chế độ bay: BẬT' : 'Chế độ bay: TẮT');
+          } else if (e.code === 'KeyC') {
+            this.isCinematicTour = !this.isCinematicTour;
+            document.getElementById('btn-tour').classList.toggle('active', this.isCinematicTour);
+            this.showToast(this.isCinematicTour ? 'Bật Chế Độ Tham Quan' : 'Thoát Tham Quan');
+          } else if (e.code === 'KeyV') {
+            this.isThirdPerson = !this.isThirdPerson;
+            this.character.visible = this.isThirdPerson;
+          } else if (e.code === 'Escape') {
+            this.togglePauseMenu();
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          this.inputKeys[e.code] = false;
+        });
+
+        window.addEventListener('wheel', (e) => {
+          if (e.deltaY > 0) this.selectSlot(this.activeSlot + 1);
+          else this.selectSlot(this.activeSlot - 1);
+        }, { passive: true });
+
+        this.viewport.addEventListener('click', () => {
+          if (!document.getElementById('pause-menu').classList.contains('visible') &&
+              document.getElementById('welcome-screen').classList.contains('hidden')) {
+            this.requestPointerLock();
+          }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+          this.isLocked = (document.pointerLockElement === this.viewport);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (this.isLocked && !this.isCinematicTour) {
+            this.player.yaw -= e.movementX * 0.0022;
+            this.player.pitch -= e.movementY * 0.0022;
+            this.player.pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.player.pitch));
+          }
+        });
+
+        window.addEventListener('mousedown', (e) => {
+          if (!this.isLocked || this.isCinematicTour) return;
+          if (e.button === 0) {
+            this.handleBreakBlock();
+          } else if (e.button === 2) {
+            this.handlePlaceBlock();
+          }
+        });
+
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        this.setupMobileControls();
+
+        window.addEventListener('resize', () => {
+          this.camera.aspect = window.innerWidth / window.innerHeight;
+          this.camera.updateProjectionMatrix();
+          this.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+      }
+
+      requestPointerLock() {
+        this.viewport.requestPointerLock = this.viewport.requestPointerLock || this.viewport.mozRequestPointerLock;
+        if (this.viewport.requestPointerLock) this.viewport.requestPointerLock();
+      }
+
+      togglePauseMenu(forceOpen) {
+        const menu = document.getElementById('pause-menu');
+        const show = forceOpen !== undefined ? forceOpen : !menu.classList.contains('visible');
+        menu.classList.toggle('visible', show);
+        if (show && document.exitPointerLock) document.exitPointerLock();
+      }
+
+      showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+      }
+
+      getTargetBlock(maxDist = 5.5) {
+        const dir = new THREE.Vector3(
+          -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
+          Math.sin(this.player.pitch),
+          -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
+        ).normalize();
+
+        let px = this.player.pos.x;
+        let py = this.player.pos.y + this.player.height * 0.9;
+        let pz = this.player.pos.z;
+
+        const step = 0.08;
+        let traversed = 0;
+        let lastEmpty = null;
+
+        while (traversed < maxDist) {
+          const bx = Math.floor(px);
+          const by = Math.floor(py);
+          const bz = Math.floor(pz);
+          const b = this.world.getBlock(bx, by, bz);
+
+          if (b !== BLOCK_DEFS.AIR && b !== BLOCK_DEFS.WATER) {
+            return {
+              x: bx, y: by, z: bz,
+              blockId: b,
+              placePos: lastEmpty
+            };
+          }
+
+          lastEmpty = { x: bx, y: by, z: bz };
+          px += dir.x * step;
+          py += dir.y * step;
+          pz += dir.z * step;
+          traversed += step;
+        }
+        return null;
+      }
+
+      handleBreakBlock() {
+        const target = this.getTargetBlock();
+        if (!target) return;
+
+        if (target.blockId === BLOCK_DEFS.LEAVES_LIGHT ||
+            target.blockId === BLOCK_DEFS.LEAVES_DEEP ||
+            target.blockId === BLOCK_DEFS.LEAVES_WHITE ||
+            target.blockId === BLOCK_DEFS.WOOD_LOG) {
+          this.petals.burstAt(new THREE.Vector3(target.x + 0.5, target.y + 0.5, target.z + 0.5), 35);
+        }
+
+        this.world.setBlock(target.x, target.y, target.z, BLOCK_DEFS.AIR);
+        this.audio.playBlockBreak();
+      }
+
+      handlePlaceBlock() {
+        const target = this.getTargetBlock();
+        if (!target || !target.placePos) return;
+
+        const p = target.placePos;
+        const playerMinX = this.player.pos.x - this.player.radius;
+        const playerMaxX = this.player.pos.x + this.player.radius;
+        const playerMinY = this.player.pos.y;
+        const playerMaxY = this.player.pos.y + this.player.height;
+        const playerMinZ = this.player.pos.z - this.player.radius;
+        const playerMaxZ = this.player.pos.z + this.player.radius;
+
+        if (p.x + 1 > playerMinX && p.x < playerMaxX &&
+            p.y + 1 > playerMinY && p.y < playerMaxY &&
+            p.z + 1 > playerMinZ && p.z < playerMaxZ) {
+          return;
+        }
+
+        const selectedItem = HOTBAR_ITEMS[this.activeSlot];
+        this.world.setBlock(p.x, p.y, p.z, selectedItem.id);
+        this.audio.playBlockPlace();
+      }
+
+      setupMobileControls() {
+        const joystick = document.getElementById('joystick-base');
+        const thumb = document.getElementById('joystick-thumb');
+        let touchId = null;
+        let originX = 0, originY = 0;
+
+        joystick.addEventListener('touchstart', (e) => {
+          const t = e.changedTouches[0];
+          touchId = t.identifier;
+          const rect = joystick.getBoundingClientRect();
+          originX = rect.left + rect.width / 2;
+          originY = rect.top + rect.height / 2;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (t.identifier === touchId) {
+              const dx = t.clientX - originX;
+              const dy = t.clientY - originY;
+              const dist = Math.min(40, Math.hypot(dx, dy));
+              const angle = Math.atan2(dy, dx);
+
+              thumb.style.transform = `translate(calc(-50% + ${Math.cos(angle) * dist}px), calc(-50% + ${Math.sin(angle) * dist}px))`;
+
+              this.inputKeys['KeyW'] = dy < -12;
+              this.inputKeys['KeyS'] = dy > 12;
+              this.inputKeys['KeyA'] = dx < -12;
+              this.inputKeys['KeyD'] = dx > 12;
+            }
+          }
+        });
+
+        const resetJoy = () => {
+          touchId = null;
+          thumb.style.transform = 'translate(-50%, -50%)';
+          this.inputKeys['KeyW'] = false;
+          this.inputKeys['KeyS'] = false;
+          this.inputKeys['KeyA'] = false;
+          this.inputKeys['KeyD'] = false;
+        };
+
+        window.addEventListener('touchend', resetJoy);
+        window.addEventListener('touchcancel', resetJoy);
+
+        document.getElementById('mob-jump').addEventListener('touchstart', () => { this.inputKeys['Space'] = true; });
+        document.getElementById('mob-jump').addEventListener('touchend', () => { this.inputKeys['Space'] = false; });
+        document.getElementById('mob-break').addEventListener('click', () => this.handleBreakBlock());
+        document.getElementById('mob-place').addEventListener('click', () => this.handlePlaceBlock());
+      }
+
+      updatePhysics(dt) {
+        if (this.isCinematicTour) return;
+
+        const isRunning = this.inputKeys['ShiftLeft'] || this.inputKeys['ShiftRight'];
+        const speed = this.isFlyMode ? 14.0 : (isRunning ? this.player.runSpeed : this.player.speed);
+
+        const moveDir = new THREE.Vector3();
+        if (this.inputKeys['KeyW']) moveDir.z -= 1;
+        if (this.inputKeys['KeyS']) moveDir.z += 1;
+        if (this.inputKeys['KeyA']) moveDir.x -= 1;
+        if (this.inputKeys['KeyD']) moveDir.x += 1;
+
+        const isMoving = moveDir.lengthSq() > 0;
+
+        if (this.isFlyMode) {
+          if (isMoving) {
+            moveDir.normalize();
+            const forward = new THREE.Vector3(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
+            const right = new THREE.Vector3(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
+            const moveVec = new THREE.Vector3().addScaledVector(forward, -moveDir.z).addScaledVector(right, moveDir.x);
+            this.player.pos.addScaledVector(moveVec, speed * dt);
+          }
+          if (this.inputKeys['Space']) this.player.pos.y += speed * dt;
+          if (this.inputKeys['KeyC'] || this.inputKeys['ControlLeft']) this.player.pos.y -= speed * dt;
+          return;
+        }
+
+        const waistBlock = this.world.getBlock(Math.floor(this.player.pos.x), Math.floor(this.player.pos.y + 0.8), Math.floor(this.player.pos.z));
+        this.player.isInWater = (waistBlock === BLOCK_DEFS.WATER);
+
+        if (isMoving) {
+          moveDir.normalize();
+          const forward = new THREE.Vector3(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
+          const right = new THREE.Vector3(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
+          const wishMove = new THREE.Vector3()
+            .addScaledVector(forward, -moveDir.z)
+            .addScaledVector(right, moveDir.x);
+
+          const curSpeed = this.player.isInWater ? speed * 0.5 : speed;
+          this.player.vel.x = THREE.MathUtils.lerp(this.player.vel.x, wishMove.x * curSpeed, dt * 10);
+          this.player.vel.z = THREE.MathUtils.lerp(this.player.vel.z, wishMove.z * curSpeed, dt * 10);
+
+          if (this.player.isGrounded && Math.random() < 0.12) {
+            const footB = this.world.getBlock(Math.floor(this.player.pos.x), Math.floor(this.player.pos.y - 0.2), Math.floor(this.player.pos.z));
+            this.audio.playFootstep(footB);
+          }
+        } else {
+          this.player.vel.x = THREE.MathUtils.lerp(this.player.vel.x, 0, dt * 12);
+          this.player.vel.z = THREE.MathUtils.lerp(this.player.vel.z, 0, dt * 12);
+        }
+
+        if (this.player.isInWater) {
+          this.player.vel.y = THREE.MathUtils.lerp(this.player.vel.y, 0.4, dt * 4);
+          if (this.inputKeys['Space']) this.player.vel.y = 3.5;
+        } else {
+          this.player.vel.y -= 24.0 * dt;
+          if (this.player.isGrounded && this.inputKeys['Space']) {
+            this.player.vel.y = 8.5;
+            this.player.isGrounded = false;
+          }
+        }
+
+        this.moveWithCollision(dt);
+      }
+
+      moveWithCollision(dt) {
+        const p = this.player;
+        const r = p.radius;
+        const h = p.height;
+
+        const nextX = p.pos.x + p.vel.x * dt;
+        if (!this.checkAABB(nextX, p.pos.y, p.pos.z, r, h)) {
+          p.pos.x = nextX;
+        } else {
+          if (p.isGrounded && !this.checkAABB(nextX, p.pos.y + 1.05, p.pos.z, r, h)) {
+            p.pos.x = nextX;
+            p.pos.y += 1.0;
+          } else {
+            p.vel.x = 0;
+          }
+        }
+
+        const nextZ = p.pos.z + p.vel.z * dt;
+        if (!this.checkAABB(p.pos.x, p.pos.y, nextZ, r, h)) {
+          p.pos.z = nextZ;
+        } else {
+          if (p.isGrounded && !this.checkAABB(p.pos.x, p.pos.y + 1.05, nextZ, r, h)) {
+            p.pos.z = nextZ;
+            p.pos.y += 1.0;
+          } else {
+            p.vel.z = 0;
+          }
+        }
+
+        const nextY = p.pos.y + p.vel.y * dt;
+        if (!this.checkAABB(p.pos.x, nextY, p.pos.z, r, h)) {
+          p.pos.y = nextY;
+          p.isGrounded = false;
+        } else {
+          if (p.vel.y < 0) p.isGrounded = true;
+          p.vel.y = 0;
+        }
+
+        if (p.pos.y < 1.0) {
+          p.pos.set(2, 14, -14);
+          p.vel.set(0, 0, 0);
+        }
+      }
+
+      checkAABB(x, y, z, r, h) {
+        const minX = Math.floor(x - r);
+        const maxX = Math.floor(x + r);
+        const minY = Math.floor(y);
+        const maxY = Math.floor(y + h);
+        const minZ = Math.floor(z - r);
+        const maxZ = Math.floor(z + r);
+
+        for (let bx = minX; bx <= maxX; bx++) {
+          for (let by = minY; by <= maxY; by++) {
+            for (let bz = minZ; bz <= maxZ; bz++) {
+              const b = this.world.getBlock(bx, by, bz);
+              if (b !== BLOCK_DEFS.AIR && b !== BLOCK_DEFS.WATER) {
+                return true;
+              }
+            }
+          }
+        }
+        return false;
+      }
+
+      updateCinematicTour(dt) {
+        this.tourTime += dt * 0.18;
+        const waypoints = [
+          new THREE.Vector3(2, 16, -24),
+          new THREE.Vector3(8, 14, -6),
+          new THREE.Vector3(8, 11, 8),
+          new THREE.Vector3(-14, 10, 6),
+          new THREE.Vector3(-14, 11, 18),
+          new THREE.Vector3(-4, 15, 4)
+        ];
+
+        const loopT = this.tourTime % waypoints.length;
+        const idx = Math.floor(loopT);
+        const nextIdx = (idx + 1) % waypoints.length;
+        const alpha = loopT - idx;
+
+        this.player.pos.lerpVectors(waypoints[idx], waypoints[nextIdx], alpha);
+        this.camera.position.copy(this.player.pos);
+        this.camera.lookAt(-10, 8, 12);
+      }
+
+      updateMinimap() {
+        const canvas = document.getElementById('minimap-canvas');
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        ctx.fillStyle = '#1e1422';
+        ctx.fillRect(0, 0, w, h);
+
+        const px = this.player.pos.x;
+        const pz = this.player.pos.z;
+        const range = 24;
+        const scale = w / (range * 2);
+
+        for (let rz = -range; rz <= range; rz += 2) {
+          for (let rx = -range; rx <= range; rx += 2) {
+            const bx = Math.floor(px + rx);
+            const bz = Math.floor(pz + rz);
+            let b = BLOCK_DEFS.AIR;
+            for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+              const bl = this.world.getBlock(bx, y, bz);
+              if (bl !== BLOCK_DEFS.AIR) { b = bl; break; }
+            }
+
+            if (b === BLOCK_DEFS.WATER) ctx.fillStyle = '#0288d1';
+            else if (b === BLOCK_DEFS.GRASS) ctx.fillStyle = '#65ab27';
+            else if (b === BLOCK_DEFS.LEAVES_LIGHT || b === BLOCK_DEFS.LEAVES_DEEP || b === BLOCK_DEFS.LEAVES_WHITE) ctx.fillStyle = '#f472b6';
+            else if (b === BLOCK_DEFS.TORII_RED) ctx.fillStyle = '#ef4444';
+            else if (b === BLOCK_DEFS.WOOD_PLANKS) ctx.fillStyle = '#d4a264';
+            else ctx.fillStyle = '#5d5f67';
+
+            ctx.fillRect((rx + range) * scale, (rz + range) * scale, scale * 2, scale * 2);
+          }
+        }
+
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.rotate(-this.player.yaw);
+        ctx.fillStyle = '#ff0055';
+        ctx.beginPath();
+        ctx.moveTo(0, -6);
+        ctx.lineTo(4, 5);
+        ctx.lineTo(-4, 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      animate() {
+        requestAnimationFrame(this.animate);
+        const dt = Math.min(this.clock.getDelta(), 0.1);
+
+        this.updatePhysics(dt);
+
+        if (!this.isCinematicTour) {
+          if (this.isThirdPerson) {
+            const dist = 3.8;
+            const camOffset = new THREE.Vector3(
+              Math.sin(this.player.yaw) * dist * Math.cos(this.player.pitch),
+              this.player.height * 0.9 + Math.sin(this.player.pitch) * dist,
+              Math.cos(this.player.yaw) * dist * Math.cos(this.player.pitch)
+            );
+            this.camera.position.copy(this.player.pos).add(camOffset);
+            this.camera.lookAt(
+              this.player.pos.x,
+              this.player.pos.y + this.player.height * 0.8,
+              this.player.pos.z
+            );
+          } else {
+            this.camera.position.copy(this.player.pos).add(new THREE.Vector3(0, this.player.height * 0.9, 0));
+            const lookTarget = this.camera.position.clone().add(new THREE.Vector3(
+              -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
+              Math.sin(this.player.pitch),
+              -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
+            ));
+            this.camera.lookAt(lookTarget);
+          }
+        } else {
+          this.updateCinematicTour(dt);
+        }
+
+        const isMoving = this.inputKeys['KeyW'] || this.inputKeys['KeyS'] || this.inputKeys['KeyA'] || this.inputKeys['KeyD'];
+        this.character.update(this.player.pos, this.player.yaw, isMoving, dt);
+
+        this.world.updateAround(this.player.pos.x, this.player.pos.z, 2);
+
+        const target = this.getTargetBlock();
+        if (target && !this.isCinematicTour) {
+          this.highlightBox.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
+          this.highlightBox.visible = true;
+        } else {
+          this.highlightBox.visible = false;
+        }
+
+        this.petals.update(dt, this.player.pos);
+        this.updateMinimap();
+        this.renderer.render(this.scene, this.camera);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      window.cherrySanctuaryApp = new CherrySanctuary();
+    });
+  </script>
+</body>
 </html>
