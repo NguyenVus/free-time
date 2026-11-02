@@ -955,6 +955,47 @@
         return { texture: tex, canvas: c };
       }
 
+      // Dense blossom clusters with small cut-out gaps, so a canopy reads as flowers rather than
+      // flat coloured cubes. Mipmaps stop this fine detail from shimmering in the distance.
+      static createBlossomTexture({ base, petals, highlight, center }) {
+        const size = 32;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        const pick = cols => cols[Math.floor(Math.random() * cols.length)];
+        const pixel = (x, y) => ctx.fillRect((x + size) % size, (y + size) % size, 1, 1);
+
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            ctx.fillStyle = pick(base);
+            ctx.fillRect(x, y, 1, 1);
+          }
+        }
+
+        for (let i = 0; i < 75; i++) {
+          const bx = Math.floor(Math.random() * size);
+          const by = Math.floor(Math.random() * size);
+          ctx.fillStyle = pick(petals);
+          pixel(bx - 1, by); pixel(bx + 1, by); pixel(bx, by - 1); pixel(bx, by + 1);
+          ctx.fillStyle = highlight;
+          pixel(bx + 1, by - 1);
+          ctx.fillStyle = center;
+          pixel(bx, by);
+        }
+
+        for (let i = 0; i < 18; i++) {
+          ctx.clearRect(Math.floor(Math.random() * size), Math.floor(Math.random() * size), 1, 1);
+        }
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.magFilter = THREE.NearestFilter;
+        tex.minFilter = THREE.LinearMipmapLinearFilter;
+        tex.generateMipmaps = true;
+        return { texture: tex, canvas: c };
+      }
+
       static generateAll() {
         const atlas = {};
 
@@ -1078,84 +1119,36 @@
           ctx.fillRect(4, 8, 1, 7);
         });
 
-        // 9. Light Pink Sakura Leaves: Crisp floral petals with petal clusters
-        atlas['leaves_light'] = this.create16x16(ctx => {
-          const cols = ['#ffb7ce', '#ffa3be', '#ffc6da', '#f58fad'];
-          for (let y = 0; y < 16; y++) {
-            for (let x = 0; x < 16; x++) {
-              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
-              ctx.fillRect(x, y, 1, 1);
-            }
-          }
-          const drawBlossom = (bx, by) => {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(bx, by, 1, 1);
-            ctx.fillStyle = '#ff7b9e';
-            ctx.fillRect(bx - 1, by, 1, 1);
-            ctx.fillRect(bx + 1, by, 1, 1);
-            ctx.fillRect(bx, by - 1, 1, 1);
-            ctx.fillRect(bx, by + 1, 1, 1);
-          };
-          drawBlossom(3, 4);
-          drawBlossom(11, 6);
-          drawBlossom(6, 12);
+        // 9-13. Sakura blossom canopies, from palest to deepest pink
+        atlas['leaves_white'] = this.createBlossomTexture({
+          base: ['#f9c6d6', '#f6b6ca', '#fcd6e1'],
+          petals: ['#fff0f5', '#ffe3ec', '#ffffff'],
+          highlight: '#ffffff',
+          center: '#f06595'
         });
-
-        // 10. Deep Pink Sakura Leaves
-        atlas['leaves_deep'] = this.create16x16(ctx => {
-          const cols = ['#f06292', '#e91e63', '#ec407a', '#d81b60'];
-          for (let y = 0; y < 16; y++) {
-            for (let x = 0; x < 16; x++) {
-              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
-              ctx.fillRect(x, y, 1, 1);
-            }
-          }
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(4, 4, 1, 1);
-          ctx.fillRect(12, 10, 1, 1);
-          ctx.fillStyle = '#ff80ab';
-          ctx.fillRect(3, 4, 1, 1); ctx.fillRect(5, 4, 1, 1);
+        atlas['leaves_light'] = this.createBlossomTexture({
+          base: ['#f490b4', '#ec80a8', '#f8a6c4'],
+          petals: ['#ffc4d6', '#ffd6e3', '#ffb3ca'],
+          highlight: '#fff1f5',
+          center: '#d6336c'
         });
-
-        // 11. White Leaves (Snow White Sakura)
-        atlas['leaves_white'] = this.create16x16(ctx => {
-          const cols = ['#ffffff', '#fff0f3', '#fde2e8', '#fad2dc'];
-          for (let y = 0; y < 16; y++) {
-            for (let x = 0; x < 16; x++) {
-              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
-              ctx.fillRect(x, y, 1, 1);
-            }
-          }
-          ctx.fillStyle = '#ffb3c6';
-          ctx.fillRect(5, 5, 1, 1); ctx.fillRect(11, 11, 1, 1);
+        atlas['leaves_soft'] = this.createBlossomTexture({
+          base: ['#ec78a4', '#e26a98', '#f18cb2'],
+          petals: ['#ffb8d0', '#ffa8c5', '#ffcadb'],
+          highlight: '#ffe9f0',
+          center: '#c2255c'
         });
-
-        // 12. Soft Pink Leaves (Gentle floral blush)
-        atlas['leaves_soft'] = this.create16x16(ctx => {
-          const cols = ['#fca5a5', '#f472b6', '#fbcfe8', '#fda4af', '#fb7185'];
-          for (let y = 0; y < 16; y++) {
-            for (let x = 0; x < 16; x++) {
-              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
-              ctx.fillRect(x, y, 1, 1);
-            }
-          }
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(4, 5, 1, 1); ctx.fillRect(11, 8, 1, 1);
-          ctx.fillStyle = '#e11d48';
-          ctx.fillRect(4, 4, 1, 1); ctx.fillRect(11, 9, 1, 1);
+        atlas['leaves_deep'] = this.createBlossomTexture({
+          base: ['#d6457e', '#c2366e', '#e0588c'],
+          petals: ['#f783ac', '#f06595', '#faa2c1'],
+          highlight: '#ffdeeb',
+          center: '#a61e4d'
         });
-
-        // 13. Magenta Blossom Accents
-        atlas['leaves_magenta'] = this.create16x16(ctx => {
-          const cols = ['#be185d', '#9d174d', '#db2777', '#c026d3', '#831843'];
-          for (let y = 0; y < 16; y++) {
-            for (let x = 0; x < 16; x++) {
-              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
-              ctx.fillRect(x, y, 1, 1);
-            }
-          }
-          ctx.fillStyle = '#fbcfe8';
-          ctx.fillRect(3, 4, 1, 1); ctx.fillRect(12, 11, 1, 1);
+        atlas['leaves_magenta'] = this.createBlossomTexture({
+          base: ['#c2377a', '#ad2a6a', '#d14a8a'],
+          petals: ['#ee6ba3', '#e8599a', '#f48ab8'],
+          highlight: '#ffc9de',
+          center: '#8a1a54'
         });
 
         // 14. Lantern Block: Wooden lattice with warm glowing flame
@@ -1415,9 +1408,6 @@
         this.lakeCenter = { x: -14, z: 12 };
 
         this.leafWindUniforms = {
-          uTime: { value: 0.0 },
-          uWindStrength: { value: 0.35 },
-          uWindAngle: { value: 0.55 },
           uSunsetGlow: { value: 0.0 }
         };
 
@@ -1450,42 +1440,16 @@
       createLeafMaterial(textureKey) {
         const mat = new THREE.MeshStandardMaterial({
           map: this.textures[textureKey].texture,
-          transparent: true,
-          alphaTest: 0.25,
+          // Sun + ambient light reach about 2x here, which would clip pink to white without this.
+          color: new THREE.Color(0.62, 0.62, 0.62),
+          alphaTest: 0.5,
           roughness: 0.65,
           side: THREE.DoubleSide,
           vertexColors: true
         });
 
         mat.onBeforeCompile = (shader) => {
-          shader.uniforms.uTime = this.leafWindUniforms.uTime;
-          shader.uniforms.uWindStrength = this.leafWindUniforms.uWindStrength;
-          shader.uniforms.uWindAngle = this.leafWindUniforms.uWindAngle;
           shader.uniforms.uSunsetGlow = this.leafWindUniforms.uSunsetGlow;
-
-          shader.vertexShader = `
-            uniform float uTime;
-            uniform float uWindStrength;
-            uniform float uWindAngle;
-            attribute float aWindWeight;
-          ` + shader.vertexShader;
-
-          shader.vertexShader = shader.vertexShader.replace(
-            '#include <begin_vertex>',
-            `
-            #include <begin_vertex>
-            float windW = aWindWeight;
-            if (windW > 0.001) {
-              vec2 windDir = vec2(cos(uWindAngle), sin(uWindAngle));
-              float phase = dot(position.xz, vec2(0.35, 0.35)) + position.y * 0.55 + uTime * 2.2;
-              float gust = uWindStrength;
-              float swayX = sin(phase) * 0.12 * gust * windW + windDir.x * 0.08 * gust * windW;
-              float swayZ = cos(phase * 0.82 + 0.5) * 0.10 * gust * windW + windDir.y * 0.08 * gust * windW;
-              float swayY = sin(phase * 1.7) * 0.035 * gust * windW;
-              transformed += vec3(swayX, swayY, swayZ);
-            }
-            `
-          );
 
           shader.fragmentShader = `
             uniform float uSunsetGlow;
@@ -1496,7 +1460,7 @@
             `
             #include <dithering_fragment>
             if (uSunsetGlow > 0.001) {
-              gl_FragColor.rgb += vec3(0.42, 0.15, 0.22) * uSunsetGlow;
+              gl_FragColor.rgb += vec3(0.24, 0.05, 0.16) * uSunsetGlow;
             }
             `
           );
@@ -2064,20 +2028,19 @@
                 const leafRand = leafHash - Math.floor(leafHash);
                 if (dNormSq > 0.65 && leafRand < 0.14) continue;
 
-                // Blossom colors: white & pale on outside, soft & deep pink inside, magenta accents
+                // Colour follows height and soft patches rather than per-block noise, so the
+                // canopy reads as one mass: pale on top, deeper pink on the underside.
+                const patch = this.noise.noise2D(
+                  (ccx + cdx) * 0.16 + (ccy + cdy) * 0.09,
+                  (ccz + cdz) * 0.16
+                );
+                const tone = (cdy / ry) * 0.6 + patch * 0.45 + (leafRand - 0.5) * 0.2;
                 let leafType;
-                if (dNormSq > 0.68) {
-                  if (leafRand > 0.88) leafType = BLOCK_DEFS.LEAVES_MAGENTA;
-                  else if (leafRand > 0.52) leafType = BLOCK_DEFS.LEAVES_WHITE;
-                  else leafType = BLOCK_DEFS.LEAVES_LIGHT;
-                } else if (dNormSq > 0.35) {
-                  if (leafRand > 0.55) leafType = BLOCK_DEFS.LEAVES_SOFT;
-                  else if (leafRand > 0.20) leafType = BLOCK_DEFS.LEAVES_LIGHT;
-                  else leafType = BLOCK_DEFS.LEAVES_DEEP;
-                } else {
-                  if (leafRand > 0.40) leafType = BLOCK_DEFS.LEAVES_DEEP;
-                  else leafType = BLOCK_DEFS.LEAVES_SOFT;
-                }
+                if (tone > 0.3) leafType = BLOCK_DEFS.LEAVES_WHITE;
+                else if (tone > -0.15) leafType = BLOCK_DEFS.LEAVES_LIGHT;
+                else if (tone > -0.45) leafType = BLOCK_DEFS.LEAVES_SOFT;
+                else if (tone > -0.8) leafType = BLOCK_DEFS.LEAVES_DEEP;
+                else leafType = BLOCK_DEFS.LEAVES_MAGENTA;
 
                 setBlock(ccx + cdx, ccy + cdy, ccz + cdz, leafType);
 
@@ -2184,8 +2147,7 @@
                       positions: [],
                       normals: [],
                       uvs: [],
-                      colors: [],
-                      windWeights: []
+                      colors: []
                     };
                   }
                   const bucket = blockBuckets[bucketKey];
@@ -2212,19 +2174,6 @@
                     computeAO(verts[3][0], verts[3][1], verts[3][2])
                   ];
 
-                  // Wind sway weight: leaves at canopy edge sway stronger than inner leaves
-                  let windWeight = 0.0;
-                  const isLeafBlock = (b >= BLOCK_DEFS.LEAVES_LIGHT && b <= BLOCK_DEFS.LEAVES_WHITE) ||
-                                      b === BLOCK_DEFS.LEAVES_SOFT || b === BLOCK_DEFS.LEAVES_MAGENTA;
-                  if (isLeafBlock) {
-                    let airNeighbors = 0;
-                    for (let checkF = 0; checkF < 6; checkF++) {
-                      const [cxD, cyD, czD] = faceDirs[checkF];
-                      if (this.getBlock(wx + cxD, y + cyD, wz + czD) === BLOCK_DEFS.AIR) airNeighbors++;
-                    }
-                    windWeight = airNeighbors >= 3 ? 1.0 : (airNeighbors >= 1 ? 0.6 : 0.25);
-                  }
-
                   const quadIndices = [0, 1, 2, 0, 2, 3];
                   const quadUVs = [[0,0], [0,1], [1,1], [0,0], [1,1], [1,0]];
 
@@ -2235,7 +2184,6 @@
                     bucket.uvs.push(quadUVs[i][0], quadUVs[i][1]);
                     const shade = ao[vi];
                     bucket.colors.push(shade, shade, shade);
-                    bucket.windWeights.push(windWeight);
                   }
                 }
               }
@@ -2247,7 +2195,6 @@
         const allNorm = [];
         const allUV = [];
         const allCol = [];
-        const allWind = [];
         const matList = [];
         const groups = [];
 
@@ -2272,7 +2219,6 @@
           for (let i = 0; i < b.normals.length; i++) allNorm.push(b.normals[i]);
           for (let i = 0; i < b.uvs.length; i++) allUV.push(b.uvs[i]);
           for (let i = 0; i < b.colors.length; i++) allCol.push(b.colors[i]);
-          for (let i = 0; i < b.windWeights.length; i++) allWind.push(b.windWeights[i]);
         }
 
         if (allPos.length === 0) return;
@@ -2282,7 +2228,6 @@
         geo.setAttribute('normal', new THREE.Float32BufferAttribute(allNorm, 3));
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(allUV, 2));
         geo.setAttribute('color', new THREE.Float32BufferAttribute(allCol, 3));
-        geo.setAttribute('aWindWeight', new THREE.Float32BufferAttribute(allWind, 1));
 
         groups.forEach(g => geo.addGroup(g.start, g.count, g.materialIndex));
 
@@ -2583,24 +2528,45 @@
     // =========================================================================
     // 6. INSTANCED FALLING PETALS (GPU Instancing & Smooth Sine Motion)
     // =========================================================================
+    const PETAL_COUNT = 1400;
+    const PETAL_SPREAD = 60;      // width of the box of petals around the player
+    const PETAL_MAX_DIST = 36;    // recycled beyond this horizontal distance
+    const PETAL_MIN_HEIGHT = -4;  // relative to the player
+    const PETAL_MAX_HEIGHT = 15;
+    const PETAL_WIND_DRIFT = 2.5;
+    const PETAL_COLORS = [0xffc2d4, 0xffd6e2, 0xffe9f0, 0xffa8c5, 0xffffff];
+
     class PetalSystem {
-      constructor(scene, count = 350) {
+      constructor(scene, count = PETAL_COUNT) {
         this.scene = scene;
         this.count = count;
         this.time = 0;
         this.dummy = new THREE.Object3D();
 
-        const geo = new THREE.PlaneGeometry(0.24, 0.24);
+        const outline = new THREE.Shape();
+        outline.moveTo(0, -0.16);
+        outline.quadraticCurveTo(0.15, -0.04, 0.09, 0.1);
+        outline.quadraticCurveTo(0.04, 0.17, 0, 0.13);
+        outline.quadraticCurveTo(-0.04, 0.17, -0.09, 0.1);
+        outline.quadraticCurveTo(-0.15, -0.04, 0, -0.16);
+        const geo = new THREE.ShapeGeometry(outline, 2);
         const mat = new THREE.MeshBasicMaterial({
-          color: 0xffb7c8,
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.92,
+          opacity: 0.95,
           depthWrite: false
         });
 
         this.mesh = new THREE.InstancedMesh(geo, mat, count);
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        // Three r128 culls an InstancedMesh by its single geometry at the world origin, which
+        // would hide every petal whenever the camera looks away from (0, 0, 0).
+        this.mesh.frustumCulled = false;
+        const tint = new THREE.Color();
+        for (let i = 0; i < count; i++) {
+          this.mesh.setColorAt(i, tint.setHex(PETAL_COLORS[i % PETAL_COLORS.length]));
+        }
+        this.mesh.instanceColor.needsUpdate = true;
         scene.add(this.mesh);
 
         this.petals = [];
@@ -2625,12 +2591,12 @@
         for (let i = 0; i < this.count; i++) {
           this.petals.push({
             pos: new THREE.Vector3(
-              (Math.random() - 0.5) * 80,
-              10 + Math.random() * 20,
-              (Math.random() - 0.5) * 80
+              (Math.random() - 0.5) * PETAL_SPREAD,
+              8 + Math.random() * 22,
+              (Math.random() - 0.5) * PETAL_SPREAD
             ),
             rot: new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI),
-            fallSpeed: 0.7 + Math.random() * 0.75,
+            fallSpeed: 0.45 + Math.random() * 0.55,
             spinSpeed: new THREE.Vector3(
               (Math.random() - 0.5) * 2.2,
               (Math.random() - 0.5) * 2.8,
@@ -2682,7 +2648,7 @@
             p.rot.z = THREE.MathUtils.lerp(p.rot.z, 0, dt * 3);
             p.rot.y += 0.2 * dt;
 
-            if (p.floatingTime > 3.0 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 55) {
+            if (p.floatingTime > 3.0 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > PETAL_MAX_DIST) {
               this.recyclePetal(p, playerPos, windDx, windDz);
             }
           } else {
@@ -2690,14 +2656,15 @@
             const flutterZ = Math.cos(this.time * p.flutterFreqZ + p.phaseZ) * p.flutterAmpZ;
 
             p.pos.y -= (p.fallSpeed - windStrength * 0.1) * dt;
-            p.pos.x += (windDx * p.windSensitivity + flutterX) * dt;
-            p.pos.z += (windDz * p.windSensitivity + flutterZ) * dt;
+            p.pos.x += (windDx * p.windSensitivity * PETAL_WIND_DRIFT + flutterX) * dt;
+            p.pos.z += (windDz * p.windSensitivity * PETAL_WIND_DRIFT + flutterZ) * dt;
 
             p.rot.x += (p.spinSpeed.x + flutterX * 1.2) * dt;
             p.rot.y += p.spinSpeed.y * dt;
             p.rot.z += (p.spinSpeed.z + flutterZ * 1.2) * dt;
 
-            if (p.pos.y < 3.0 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 65) {
+            if (p.pos.y < playerPos.y + PETAL_MIN_HEIGHT ||
+                Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > PETAL_MAX_DIST) {
               this.recyclePetal(p, playerPos, windDx, windDz);
             }
           }
@@ -2712,18 +2679,18 @@
       }
 
       recyclePetal(p, playerPos, windDx, windDz) {
-        const upwindX = -windDx * 16;
-        const upwindZ = -windDz * 16;
-        const spreadX = (Math.random() - 0.5) * 55;
-        const spreadZ = (Math.random() - 0.5) * 55;
+        const upwindX = -windDx * 10;
+        const upwindZ = -windDz * 10;
+        const spreadX = (Math.random() - 0.5) * PETAL_SPREAD;
+        const spreadZ = (Math.random() - 0.5) * PETAL_SPREAD;
 
         p.pos.set(
           playerPos.x + upwindX + spreadX,
-          14 + Math.random() * 16,
+          playerPos.y + PETAL_MIN_HEIGHT + Math.random() * (PETAL_MAX_HEIGHT - PETAL_MIN_HEIGHT),
           playerPos.z + upwindZ + spreadZ
         );
         p.floatingTime = 0;
-        p.fallSpeed = 0.65 + Math.random() * 0.75;
+        p.fallSpeed = 0.45 + Math.random() * 0.55;
       }
     }
 
@@ -2746,6 +2713,7 @@
 
         this.mesh = new THREE.InstancedMesh(geo, mat, this.count);
         this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.mesh.frustumCulled = false; // see PetalSystem: r128 culls this at the world origin
         scene.add(this.mesh);
 
         this.spawnAround(0, 0);
@@ -3379,7 +3347,7 @@
         } else if (mode === 'sunset') {
           skyCol = 0xf472b6;
           fogCol = 0xfbcfe8;
-          sunCol = 0xff9966;
+          sunCol = 0xffa7a0;
           ambCol = 0x663d5e;
           sunInt = 1.35;
           ffOpacity = 0.25;
@@ -4708,11 +4676,6 @@
 
         // 1. Update Wind System & Vertex Shaders
         this.wind.update(dt);
-        if (this.world && this.world.leafWindUniforms) {
-          this.world.leafWindUniforms.uTime.value = this.wind.time;
-          this.world.leafWindUniforms.uWindStrength.value = this.wind.strength;
-          this.world.leafWindUniforms.uWindAngle.value = this.wind.angle;
-        }
 
         // 2. Smooth Time of Day Transitions
         this.updateTimeTransition(dt);
