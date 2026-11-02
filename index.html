@@ -1676,6 +1676,21 @@
     // =========================================================================
     const CHUNK_SIZE = 16;
     const CHUNK_HEIGHT = 32;
+    const VILLAGE = { x: 78, z: 13, radius: 38, blend: 16, groundY: 12 };
+    const VILLAGE_ROAD = { z: 13, startX: -1, halfWidth: 1.6, bankWidth: 6, treeClearance: 3.5, clearWidth: 2.6, clearHeight: 4 };
+    const VILLAGE_TREE_CLEARANCE = 11; // tree canopies spread this far, and must not cover the field
+    // Around an open field in the middle; each door faces the centre. No house reaches the
+    // terrain blend ring, and each one fits inside its chunk and that chunk's neighbours.
+    const VILLAGE_HOUSES = [
+      { dx: -21, dz: -21, width: 9, depth: 7, door: 'south' },
+      { dx: 0, dz: -28, width: 11, depth: 7, door: 'south' },
+      { dx: 21, dz: -21, width: 9, depth: 7, door: 'south' },
+      { dx: 28, dz: 0, width: 7, depth: 9, door: 'west' },
+      { dx: 21, dz: 21, width: 9, depth: 7, door: 'north' },
+      { dx: 0, dz: 28, width: 11, depth: 7, door: 'north' },
+      { dx: -21, dz: 21, width: 9, depth: 7, door: 'north' }
+    ];
+    const HOUSE_WALL_HEIGHT = 3;
     const WATER_LEVEL = 6;
     const RIVER_BANK_WIDTH = 9;
     const RIVER_DEPTH = 3;
@@ -2009,7 +2024,7 @@
         return chunk;
       }
 
-      getTerrainHeight(wx, wz) {
+      getBaseTerrainHeight(wx, wz) {
         const n1 = this.noise.noise2D(wx * 0.03, wz * 0.03) * 7.5;
         const n2 = this.noise.noise2D(wx * 0.07, wz * 0.07) * 3.0;
         let h = 11 + (n1 + n2);
@@ -2020,6 +2035,117 @@
           ? Math.max(5, step - Math.floor((1.0 - lakeDist / 18) * 6.5))
           : Math.min(CHUNK_HEIGHT - 6, Math.max(7, step));
         return this.carveRiver(height, wx, wz);
+      }
+
+      getTerrainHeight(wx, wz) {
+        return this.flattenVillage(this.gradeVillageRoad(this.getBaseTerrainHeight(wx, wz), wx, wz), wx, wz);
+      }
+
+      // The road cuts an even slope from the stone path down to the village. Following the natural
+      // hills would leave steps two blocks high, which are too tall to jump.
+      gradeVillageRoad(height, wx, wz) {
+        const endX = VILLAGE.x - VILLAGE.radius + 2;
+        if (wx < VILLAGE_ROAD.startX || wx > endX) return height;
+        const dist = Math.abs(wz - VILLAGE_ROAD.z);
+        if (dist >= VILLAGE_ROAD.halfWidth + VILLAGE_ROAD.bankWidth) return height;
+
+        if (this.roadStartY === undefined) {
+          this.roadStartY = this.getBaseTerrainHeight(VILLAGE_ROAD.startX, VILLAGE_ROAD.z);
+        }
+        const along = (wx - VILLAGE_ROAD.startX) / (endX - VILLAGE_ROAD.startX);
+        const roadY = Math.round(this.roadStartY + (VILLAGE.groundY - this.roadStartY) * along);
+        if (dist <= VILLAGE_ROAD.halfWidth) return roadY;
+
+        const t = (dist - VILLAGE_ROAD.halfWidth) / VILLAGE_ROAD.bankWidth;
+        return Math.round(roadY + (height - roadY) * t * t * (3 - 2 * t));
+      }
+
+      flattenVillage(height, wx, wz) {
+        const dist = Math.hypot(wx - VILLAGE.x, wz - VILLAGE.z);
+        if (dist <= VILLAGE.radius) return VILLAGE.groundY;
+        if (dist >= VILLAGE.radius + VILLAGE.blend) return height;
+        const t = (dist - VILLAGE.radius) / VILLAGE.blend;
+        const ease = t * t * (3 - 2 * t);
+        return Math.round(VILLAGE.groundY + (height - VILLAGE.groundY) * ease);
+      }
+
+      isInVillage(wx, wz, margin = 0) {
+        return Math.hypot(wx - VILLAGE.x, wz - VILLAGE.z) <= VILLAGE.radius + margin;
+      }
+
+      isOnVillageRoad(wx, wz, margin) {
+        return Math.abs(wz - VILLAGE_ROAD.z) < margin &&
+               wx >= VILLAGE_ROAD.startX && wx <= VILLAGE.x - VILLAGE.radius + 2;
+      }
+
+      buildVillageHouses(cx, cz, setStructBlock) {
+        for (const house of VILLAGE_HOUSES) {
+          const x = VILLAGE.x + house.dx;
+          const z = VILLAGE.z + house.dz;
+          if (Math.floor(x / CHUNK_SIZE) === cx && Math.floor(z / CHUNK_SIZE) === cz) {
+            this.buildHouse(x, z, house, setStructBlock);
+          }
+        }
+      }
+
+      buildHouse(centerX, centerZ, house, setBlock) {
+        const x0 = centerX - Math.floor(house.width / 2);
+        const x1 = x0 + house.width - 1;
+        const z0 = centerZ - Math.floor(house.depth / 2);
+        const z1 = z0 + house.depth - 1;
+        const floorY = VILLAGE.groundY;
+        const wallTop = floorY + HOUSE_WALL_HEIGHT;
+
+        for (let x = x0; x <= x1; x++) {
+          for (let z = z0; z <= z1; z++) {
+            setBlock(x, floorY, z, BLOCK_DEFS.WOOD_PLANKS);
+            const onEdgeX = x === x0 || x === x1;
+            const onEdgeZ = z === z0 || z === z1;
+            if (!onEdgeX && !onEdgeZ) continue;
+
+            for (let y = floorY + 1; y <= wallTop; y++) {
+              const isCorner = onEdgeX && onEdgeZ;
+              const along = onEdgeZ ? x - centerX : z - centerZ;
+              const isWindow = !isCorner && y === floorY + 2 && Math.abs(along) % 3 === 2;
+              if (isCorner) setBlock(x, y, z, BLOCK_DEFS.WOOD_LOG);
+              else setBlock(x, y, z, isWindow ? BLOCK_DEFS.GLASS : BLOCK_DEFS.WOOD_PLANKS);
+            }
+          }
+        }
+
+        // Stepped roof with its ridge along x, overhanging the walls by one block
+        const rows = Math.ceil((house.depth + 2) / 2);
+        for (let i = 0; i < rows; i++) {
+          const y = wallTop + 1 + i;
+          const north = z0 - 1 + i;
+          const south = z1 + 1 - i;
+          for (let x = x0 - 1; x <= x1 + 1; x++) {
+            setBlock(x, y, north, BLOCK_DEFS.ROOF_SLATE);
+            setBlock(x, y, south, BLOCK_DEFS.ROOF_SLATE);
+          }
+          // Close the triangles at both ends
+          for (let z = north + 1; z < south; z++) {
+            setBlock(x0, y, z, BLOCK_DEFS.WOOD_PLANKS);
+            setBlock(x1, y, z, BLOCK_DEFS.WOOD_PLANKS);
+          }
+        }
+
+        // Door opening, two blocks high, facing the middle of the village, with a lantern beside it
+        const door = {
+          north: [centerX, z0, 1, 0, -1],
+          south: [centerX, z1, 1, 0, 1],
+          west: [x0, centerZ, 0, 1, 0]
+        }[house.door];
+        const [doorX, doorZ, sideX, sideZ, outZ] = door;
+        const outX = house.door === 'west' ? -1 : 0;
+        setBlock(doorX, floorY + 1, doorZ, BLOCK_DEFS.AIR);
+        setBlock(doorX, floorY + 2, doorZ, BLOCK_DEFS.AIR);
+        setBlock(doorX + sideX * 2 + outX, floorY + 2, doorZ + sideZ * 2 + outZ, BLOCK_DEFS.LANTERN);
+
+        // A lantern lights the room from the middle
+        setBlock(centerX, wallTop, centerZ, BLOCK_DEFS.LANTERN);
+        this.treeLanterns.push({ x: doorX + sideX * 2 + outX, y: floorY + 2, z: doorZ + sideZ * 2 + outZ });
+        this.treeLanterns.push({ x: centerX, y: wallTop, z: centerZ });
       }
 
       // The river meanders along the z axis, west of the stone path, and flows through the lake.
@@ -2149,7 +2275,7 @@
               // Carve stone walking path along scenic curve
               if (block === BLOCK_DEFS.GRASS) {
                 const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
-                if (Math.abs(wx - pathCurve) < 1.6) {
+                if (Math.abs(wx - pathCurve) < 1.6 || this.isOnVillageRoad(wx, wz, VILLAGE_ROAD.halfWidth)) {
                   block = BLOCK_DEFS.STONE;
                 }
               }
@@ -2179,6 +2305,11 @@
 
         const setStructBlock = (wx, wy, wz, blockId) => {
           if (wy < 0 || wy >= CHUNK_HEIGHT) return;
+          // Keep a walkable corridor along the road: nearby trees may arch over it, but not block it
+          if (this.isOnVillageRoad(wx, wz, VILLAGE_ROAD.clearWidth)) {
+            const surface = this.getTerrainHeight(wx, wz);
+            if (wy >= surface && wy <= surface + VILLAGE_ROAD.clearHeight) return;
+          }
           const key = `${wx},${wy},${wz}`;
           if (!this.modifiedBlocks.has(key)) {
             const targetChunk = this.getOrCreateChunk(Math.floor(wx / CHUNK_SIZE), Math.floor(wz / CHUNK_SIZE));
@@ -2189,6 +2320,7 @@
         };
 
         this.buildRiverBridges(cx, cz, setStructBlock);
+        this.buildVillageHouses(cx, cz, setStructBlock);
 
         // Well-spaced organic tree distribution
         for (let lz = 3; lz < CHUNK_SIZE; lz += 8) {
@@ -2203,6 +2335,7 @@
             const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
             if (lakeDist < 12) continue; // inside lake
             if (this.isOnRiverBank(wx, wz, RIVER_TREE_CLEARANCE)) continue;
+            if (this.isInVillage(wx, wz, VILLAGE_TREE_CLEARANCE) || this.isOnVillageRoad(wx, wz, VILLAGE_ROAD.treeClearance)) continue;
 
             const gy = this.getTerrainHeight(wx, wz);
             if (gy < 6 || gy > CHUNK_HEIGHT - 13) continue;
@@ -2339,7 +2472,7 @@
               const gyBlock = this.getTerrainHeight(gx, gz);
               if (gyBlock >= 7) {
                 const pathCurve = Math.sin(gz * 0.07) * 7.0 - 4;
-                if (Math.abs(gx - pathCurve) > 1.8) {
+                if (Math.abs(gx - pathCurve) > 1.8 && !this.isOnVillageRoad(gx, gz, 1.8) && !this.isInVillage(gx, gz)) {
                   setBlock(gx, gyBlock, gz, BLOCK_DEFS.GROUND_PETALS_CARPET);
                 }
               }
@@ -2695,7 +2828,7 @@
               const v = Math.sin(wx * 12.9898 + wz * 78.233 + salt * 37.719) * 43758.5453;
               return v - Math.floor(v);
             };
-            if (random(0) >= QUALITY.flowerDensity) continue;
+            if (random(0) >= QUALITY.flowerDensity || this.isInVillage(wx, wz)) continue;
 
             let groundY = -1;
             for (let y = CHUNK_HEIGHT - 2; y >= 0; y--) {
@@ -3797,7 +3930,7 @@
             const hash = Math.sin(rx * 12.9898 + rz * 78.233) * 43758.5453;
             if (hash - Math.floor(hash) > 0.42) {
               const gy = this.world.getTerrainHeight(rx, rz);
-              if (gy >= 7) {
+              if (gy >= 7 && !this.world.isInVillage(rx, rz)) {
                 dummy.position.set(rx + (Math.random() - 0.5) * 0.8, gy + 1.01, rz + (Math.random() - 0.5) * 0.8);
                 dummy.rotation.y = Math.random() * Math.PI * 2;
                 const s = 0.7 + Math.random() * 0.45;
@@ -6080,7 +6213,7 @@
         const px = this.isCinematicTour ? this.camera.position.x : this.player.pos.x;
         const pz = this.isCinematicTour ? this.camera.position.z : this.player.pos.z;
         const curYaw = this.isCinematicTour ? this.tourCurrentYaw : this.player.yaw;
-        const range = 48;
+        const range = 64;
         const cellSize = 4;
         const scale = w / (range * 2);
 
