@@ -18,7 +18,7 @@
       --soft-lavender: #e9d5ff;
       --grass-green: #5ca62d;
       --wood-brown: #38242c;
-      --glass-bg: rgba(26, 16, 28, 0.7);
+      --glass-bg: rgba(26, 16, 28, 0.72);
       --glass-border: rgba(255, 255, 255, 0.22);
       --glass-hover: rgba(255, 255, 255, 0.35);
       --text-main: #fffdfa;
@@ -58,10 +58,10 @@
       inset: 0;
       pointer-events: none;
       z-index: 2;
-      background: radial-gradient(circle at 75% 25%, rgba(255, 235, 210, 0.22) 0%, rgba(254, 215, 226, 0.08) 50%, transparent 80%);
+      background: radial-gradient(circle at 75% 25%, rgba(255, 235, 210, 0.24) 0%, rgba(254, 215, 226, 0.08) 50%, transparent 80%);
       mix-blend-mode: screen;
       opacity: 0.9;
-      transition: opacity 1.5s ease;
+      transition: opacity 2.0s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     /* Crosshair */
@@ -75,11 +75,12 @@
       pointer-events: none;
       z-index: 10;
       opacity: 0.85;
+      transition: transform 0.15s ease, opacity 0.15s ease;
     }
     #crosshair::before, #crosshair::after {
       content: '';
       position: absolute;
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.88);
       box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
     }
     #crosshair::before {
@@ -110,7 +111,7 @@
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       z-index: 15;
-      transition: transform 0.25s ease, opacity 0.25s ease;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
     }
     .hotbar-slot {
       width: 48px;
@@ -123,10 +124,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.15s ease;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .hotbar-slot:hover {
       background: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
     }
     .hotbar-slot.active {
       border-color: #ffd166;
@@ -152,27 +154,29 @@
     #top-hud {
       position: fixed;
       top: 16px;
-      left: 16px;
-      right: 16px;
+      left: 20px;
+      right: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      pointer-events: none;
       z-index: 15;
+      pointer-events: none;
     }
     .hud-title-card {
-      pointer-events: auto;
       background: var(--glass-bg);
-      backdrop-filter: blur(10px);
-      padding: 10px 18px;
-      border-radius: 12px;
+      backdrop-filter: blur(12px);
       border: 1px solid var(--glass-border);
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      padding: 8px 16px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      pointer-events: auto;
+      transition: transform 0.3s ease;
+    }
+    .hud-title-card:hover {
+      transform: translateY(-1px);
     }
     .hud-title-card h1 {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 700;
       letter-spacing: 0.5px;
       color: #fff;
@@ -184,15 +188,15 @@
       color: var(--soft-pink);
     }
     .hud-btn-group {
-      pointer-events: auto;
       display: flex;
       gap: 8px;
+      pointer-events: auto;
     }
     .hud-btn {
       background: var(--glass-bg);
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(12px);
       border: 1px solid var(--glass-border);
-      color: var(--text-main);
+      color: #fff;
       padding: 8px 14px;
       border-radius: 10px;
       font-size: 12px;
@@ -201,7 +205,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      transition: all 0.2s;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .hud-btn:hover {
       background: var(--glass-hover);
@@ -211,6 +215,7 @@
     .hud-btn.active {
       background: rgba(244, 114, 182, 0.35);
       border-color: var(--soft-pink);
+      box-shadow: 0 0 12px rgba(244, 114, 182, 0.4);
     }
 
     /* Minimap */
@@ -228,6 +233,7 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
       z-index: 15;
       pointer-events: none;
+      transition: transform 0.3s ease;
     }
     #minimap-canvas {
       width: 100%;
@@ -250,7 +256,7 @@
       pointer-events: none;
       z-index: 12;
       opacity: 0;
-      transition: opacity 1.2s ease, transform 1.2s ease;
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
       max-width: 90vw;
     }
     #haiku-banner.visible {
@@ -282,7 +288,9 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      transition: opacity 0.8s ease, visibility 0.8s ease;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.7s ease;
     }
     #welcome-screen.hidden {
       opacity: 0;
@@ -298,7 +306,7 @@
       padding: 36px 32px;
       text-align: center;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-      animation: floatUp 0.8s ease;
+      animation: floatUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
     @keyframes floatUp {
       from { transform: translateY(30px); opacity: 0; }
@@ -372,7 +380,7 @@
       justify-content: center;
       gap: 10px;
       box-shadow: 0 8px 24px rgba(219, 39, 119, 0.45);
-      transition: all 0.25s;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .btn-enter:hover {
       transform: translateY(-2px) scale(1.02);
@@ -392,7 +400,7 @@
       opacity: 0;
       visibility: hidden;
       pointer-events: none;
-      transition: all 0.3s ease;
+      transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s ease;
     }
     #pause-menu.visible {
       opacity: 1;
@@ -407,6 +415,11 @@
       border-radius: 20px;
       padding: 28px;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      transform: scale(0.95);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #pause-menu.visible .pause-box {
+      transform: scale(1.0);
     }
     .pause-box h2 {
       font-size: 18px;
@@ -446,10 +459,11 @@
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
-      transition: 0.2s;
+      transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .btn-action:hover {
       background: var(--glass-hover);
+      transform: translateY(-1px);
     }
     .btn-action.primary {
       background: var(--deep-pink);
@@ -492,6 +506,7 @@
       background: rgba(244, 114, 182, 0.8);
       border-radius: 50%;
       box-shadow: 0 0 12px rgba(244, 114, 182, 0.6);
+      transition: transform 0.05s ease-out;
     }
     .mobile-btn-cluster {
       position: absolute;
@@ -516,9 +531,11 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
     }
     .mob-btn:active {
       background: var(--soft-pink);
+      transform: scale(0.92);
     }
 
     /* Notification Toast */
@@ -526,8 +543,8 @@
       position: fixed;
       top: 80px;
       left: 50%;
-      transform: translateX(-50%);
-      background: rgba(20, 10, 24, 0.85);
+      transform: translateX(-50%) translateY(-10px);
+      background: rgba(20, 10, 24, 0.88);
       border: 1px solid var(--soft-pink);
       color: #fff;
       padding: 8px 18px;
@@ -536,9 +553,12 @@
       z-index: 1000;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.3s;
+      transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    #toast.show { opacity: 1; }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
 
     /* Debug Overlay (F3) */
     #debug-overlay {
@@ -557,6 +577,7 @@
       pointer-events: none;
       backdrop-filter: blur(8px);
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      transition: opacity 0.25s ease;
     }
     #debug-overlay.hidden {
       display: none;
@@ -632,16 +653,16 @@
       <div class="welcome-badge">3D Voxel • Original Design</div>
       <h1 class="welcome-title">CHERRY BLOSSOM GARDEN</h1>
       <p class="welcome-sub">
-        Khu Vườn Anh Đào Voxel 3D Tự Sinh: Đồi hoa bậc thang, cánh hoa rơi theo gió, tiếng koto và hồ nước tĩnh lặng.
+        Khu Vườn Anh Đào Voxel 3D Tự Sinh: Cây anh đào cổ thụ uốn lượn, tán hoa bồng bềnh, cành rủ soi bóng hồ nước, cánh hoa chao nghiêng theo gió cùng tiếng đàn Koto tĩnh lặng.
       </p>
 
       <div class="controls-grid">
-        <div class="ctrl-item"><span class="ctrl-key">WASD</span> Di chuyển</div>
-        <div class="ctrl-item"><span class="ctrl-key">Chuột</span> Xoay góc nhìn</div>
-        <div class="ctrl-item"><span class="ctrl-key">Space</span> Nhảy / Bơi lên</div>
-        <div class="ctrl-item"><span class="ctrl-key">Shift</span> Chạy nhanh</div>
-        <div class="ctrl-item"><span class="ctrl-key">Chuột Trái</span> Đào khối / Rung cây hoa</div>
-        <div class="ctrl-item"><span class="ctrl-key">Chuột Phải</span> Đặt khối mới</div>
+        <div class="ctrl-item"><span class="ctrl-key">WASD</span> Di chuyển mượt (Gia tốc)</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột</span> Xoay góc nhìn êm dịu</div>
+        <div class="ctrl-item"><span class="ctrl-key">Space</span> Nhảy đường cong / Bơi</div>
+        <div class="ctrl-item"><span class="ctrl-key">Shift</span> Chạy nhanh (Tăng FOV)</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột Trái</span> Đào khối (Hiệu ứng vỡ)</div>
+        <div class="ctrl-item"><span class="ctrl-key">Chuột Phải</span> Đặt khối (Nảy Pop)</div>
         <div class="ctrl-item"><span class="ctrl-key">1 - 9</span> Chọn khối trong túi</div>
         <div class="ctrl-item"><span class="ctrl-key">F / C</span> Chế độ bay / Tham quan</div>
       </div>
@@ -662,7 +683,7 @@
         <select id="set-time">
           <option value="day">Ban Ngày (Golden Hour)</option>
           <option value="sunset">Hoàng Hôn (Sakura Sunset)</option>
-          <option value="night">Đêm Trăng & Đom Đóm (Moonlight)</option>
+          <option value="night">Đêm Trăng & Đèn Lồng (Moonlight)</option>
         </select>
       </div>
 
@@ -736,7 +757,11 @@
       WATER: 12,
       TORII_RED: 13,
       ROOF_SLATE: 14,
-      CHERRY_HEARTWOOD: 15
+      CHERRY_HEARTWOOD: 15,
+      LEAVES_SOFT: 16,
+      LEAVES_MAGENTA: 17,
+      GROUND_PETALS_CARPET: 18,
+      PAPER_LANTERN: 19
     };
 
     const BLOCK_NAMES = {
@@ -751,11 +776,15 @@
       [BLOCK_DEFS.LEAVES_DEEP]: 'Hoa hồng đậm (Deep)',
       [BLOCK_DEFS.LEAVES_WHITE]: 'Hoa trắng tinh (White)',
       [BLOCK_DEFS.GLASS]: 'Kính trong suốt (Glass)',
-      [BLOCK_DEFS.LANTERN]: 'Đèn lồng phát sáng (Lantern)',
+      [BLOCK_DEFS.LANTERN]: 'Đèn lồng đá (Lantern)',
       [BLOCK_DEFS.WATER]: 'Nước hồ trong (Water)',
       [BLOCK_DEFS.TORII_RED]: 'Cổng Torii Đỏ',
       [BLOCK_DEFS.ROOF_SLATE]: 'Ngói Slate Đen',
-      [BLOCK_DEFS.CHERRY_HEARTWOOD]: 'Lõi gỗ anh đào'
+      [BLOCK_DEFS.CHERRY_HEARTWOOD]: 'Lõi gỗ anh đào',
+      [BLOCK_DEFS.LEAVES_SOFT]: 'Hoa hồng phấn (Soft Pink)',
+      [BLOCK_DEFS.LEAVES_MAGENTA]: 'Hoa anh đào thẫm (Magenta)',
+      [BLOCK_DEFS.GROUND_PETALS_CARPET]: 'Thảm cánh hoa rơi (Carpet)',
+      [BLOCK_DEFS.PAPER_LANTERN]: 'Đèn lồng cành cây (Paper Lantern)'
     };
 
     const HOTBAR_ITEMS = [
@@ -808,7 +837,6 @@
               ctx.fillRect(x, y, 1, 1);
             }
           }
-          // Top grass layer with hanging blades
           const gCols = ['#72ba2e', '#65ab27', '#7fc738'];
           for (let x = 0; x < 16; x++) {
             const h = 3 + Math.floor(Math.sin(x * 1.3) * 1.5 + Math.random() * 1.8);
@@ -856,19 +884,27 @@
           }
         });
 
-        // 6. Cherry Wood Log Side: Dark purplish-brown bark with vertical grain
+        // 6. Cherry Wood Log Side: Dark reddish-brown bark with subtle horizontal stripes (Cherry Lenticels)
         atlas['log_side'] = this.create16x16(ctx => {
-          const cols = ['#38242c', '#2c1b22', '#452d37', '#25161d'];
+          const baseCols = ['#3d2128', '#46272f', '#321920', '#4f2c35', '#2a141b'];
           for (let y = 0; y < 16; y++) {
             for (let x = 0; x < 16; x++) {
-              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillStyle = baseCols[Math.floor(Math.random() * baseCols.length)];
               ctx.fillRect(x, y, 1, 1);
             }
           }
-          ctx.fillStyle = '#1b0f14';
-          ctx.fillRect(3, 0, 1, 16);
-          ctx.fillRect(9, 0, 1, 16);
-          ctx.fillRect(14, 0, 1, 16);
+          // Characteristic horizontal cherry bark lenticels
+          const drawLenticel = (x, y, len) => {
+            ctx.fillStyle = '#180a0e';
+            ctx.fillRect(x, y, len, 1);
+            ctx.fillStyle = '#653a43'; // warm highlight
+            ctx.fillRect(x + 1, (y - 1 >= 0 ? y - 1 : y + 1), Math.max(1, len - 2), 1);
+          };
+          drawLenticel(2, 3, 5);
+          drawLenticel(9, 6, 5);
+          drawLenticel(1, 10, 4);
+          drawLenticel(10, 12, 4);
+          drawLenticel(5, 14, 3);
         });
 
         // 7. Cherry Wood Log Top: Salmon peach interior rings
@@ -953,7 +989,35 @@
           ctx.fillRect(5, 5, 1, 1); ctx.fillRect(11, 11, 1, 1);
         });
 
-        // 12. Lantern Block: Wooden lattice with warm glowing flame
+        // 12. Soft Pink Leaves (Gentle floral blush)
+        atlas['leaves_soft'] = this.create16x16(ctx => {
+          const cols = ['#fca5a5', '#f472b6', '#fbcfe8', '#fda4af', '#fb7185'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(4, 5, 1, 1); ctx.fillRect(11, 8, 1, 1);
+          ctx.fillStyle = '#e11d48';
+          ctx.fillRect(4, 4, 1, 1); ctx.fillRect(11, 9, 1, 1);
+        });
+
+        // 13. Magenta Blossom Accents
+        atlas['leaves_magenta'] = this.create16x16(ctx => {
+          const cols = ['#be185d', '#9d174d', '#db2777', '#c026d3', '#831843'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = cols[Math.floor(Math.random() * cols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#fbcfe8';
+          ctx.fillRect(3, 4, 1, 1); ctx.fillRect(12, 11, 1, 1);
+        });
+
+        // 14. Lantern Block: Wooden lattice with warm glowing flame
         atlas['lantern'] = this.create16x16(ctx => {
           ctx.fillStyle = '#26170e';
           ctx.fillRect(0, 0, 16, 16);
@@ -969,7 +1033,29 @@
           ctx.fillRect(2, 7, 12, 2);
         });
 
-        // 13. Glass
+        // 15. Hanging Paper Lantern Block: Japanese rice paper with warm vermilion trim
+        atlas['paper_lantern'] = this.create16x16(ctx => {
+          ctx.fillStyle = '#1c0d12';
+          ctx.fillRect(0, 0, 16, 16);
+          const pCols = ['#fffbeb', '#fef3c7', '#fde68a', '#ffedd5'];
+          for (let y = 2; y < 14; y++) {
+            for (let x = 2; x < 14; x++) {
+              ctx.fillStyle = pCols[Math.floor(Math.random() * pCols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillRect(0, 0, 16, 2);
+          ctx.fillRect(0, 14, 16, 2);
+          ctx.fillRect(0, 0, 2, 16);
+          ctx.fillRect(14, 0, 2, 16);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillRect(7, 2, 2, 12);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(5, 5, 6, 6);
+        });
+
+        // 16. Glass
         atlas['glass'] = this.create16x16(ctx => {
           ctx.clearRect(0, 0, 16, 16);
           ctx.fillStyle = 'rgba(186, 230, 253, 0.65)';
@@ -979,7 +1065,7 @@
           ctx.fillRect(3, 3, 3, 1); ctx.fillRect(4, 4, 1, 2);
         });
 
-        // 14. Water: Crystal blue lake water
+        // 17. Water: Crystal blue lake water
         atlas['water'] = this.create16x16(ctx => {
           const cols = ['#29b6f6', '#039be5', '#0288d1', '#4fc3f7'];
           for (let y = 0; y < 16; y++) {
@@ -990,7 +1076,7 @@
           }
         });
 
-        // 15. Torii Red: Vibrant Japanese vermilion
+        // 18. Torii Red: Vibrant Japanese vermilion
         atlas['torii_red'] = this.create16x16(ctx => {
           const cols = ['#c92a2a', '#d63333', '#b52020', '#e03e3e'];
           for (let y = 0; y < 16; y++) {
@@ -1003,7 +1089,7 @@
           ctx.fillRect(0, 15, 16, 1); ctx.fillRect(15, 0, 1, 16);
         });
 
-        // 16. Slate Roof: Charcoal pagoda tiles
+        // 19. Slate Roof: Charcoal pagoda tiles
         atlas['roof_slate'] = this.create16x16(ctx => {
           const cols = ['#2d3238', '#383d45', '#24282d', '#424953'];
           for (let y = 0; y < 16; y++) {
@@ -1016,20 +1102,39 @@
           ctx.fillRect(0, 7, 16, 1); ctx.fillRect(0, 15, 16, 1);
         });
 
-        // 17. Ground Pink Petals Carpet (Scattered on grass floor)
+        // 20. Ground Petal Carpet Top (Grass speckled with fallen cherry petals)
+        atlas['carpet_top'] = this.create16x16(ctx => {
+          const gCols = ['#72ba2e', '#65ab27', '#7fc738', '#5c9e22', '#6ebd2b'];
+          for (let y = 0; y < 16; y++) {
+            for (let x = 0; x < 16; x++) {
+              ctx.fillStyle = gCols[Math.floor(Math.random() * gCols.length)];
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+          const pCols = ['#ffb7ce', '#ffffff', '#f472b6', '#db2777', '#fbcfe8'];
+          const petals = [
+            [2, 3], [3, 3], [7, 2], [8, 3], [12, 4], [13, 5],
+            [4, 8], [5, 9], [9, 8], [10, 8], [2, 12], [3, 13],
+            [7, 13], [8, 14], [13, 11], [14, 12], [11, 14]
+          ];
+          petals.forEach(([px, py]) => {
+            ctx.fillStyle = pCols[Math.floor(Math.random() * pCols.length)];
+            ctx.fillRect(px, py, 1, 1);
+          });
+          ctx.fillStyle = '#ffffff'; ctx.fillRect(6, 6, 2, 2);
+          ctx.fillStyle = '#ff85a1'; ctx.fillRect(5, 6, 1, 2); ctx.fillRect(8, 6, 1, 2);
+        });
+
+        // 21. Ground Pink Petals Floating Quad (Scattered on grass floor)
         atlas['ground_petals'] = this.create16x16(ctx => {
           ctx.clearRect(0, 0, 16, 16);
           const pCols = ['#ff8da7', '#ffb7ce', '#ffffff', '#f06292'];
-          // 4-petal cluster 1
           ctx.fillStyle = pCols[0]; ctx.fillRect(3, 4, 2, 2);
           ctx.fillStyle = pCols[1]; ctx.fillRect(2, 4, 1, 2); ctx.fillRect(5, 4, 1, 2);
           ctx.fillStyle = '#fff'; ctx.fillRect(3, 3, 2, 1);
-          // Petal 2
           ctx.fillStyle = pCols[1]; ctx.fillRect(11, 8, 2, 2);
           ctx.fillStyle = pCols[3]; ctx.fillRect(10, 8, 1, 2); ctx.fillRect(13, 8, 1, 2);
-          // Petal 3
           ctx.fillStyle = pCols[0]; ctx.fillRect(7, 12, 2, 2);
-          // Little green stems
           ctx.fillStyle = '#4c8a1e';
           ctx.fillRect(4, 6, 1, 1); ctx.fillRect(12, 10, 1, 1);
         });
@@ -1048,11 +1153,15 @@
         for (let i = 0; i < 256; i++) perm[i] = i;
         let s = seed;
         for (let i = 255; i > 0; i--) {
-          s = (s * 16807 + 11) % 2147483647;
+          s = (s * 16807 + 12345) & 0x7fffffff;
           const j = s % (i + 1);
-          const t = perm[i]; perm[i] = perm[j]; perm[j] = t;
+          const t = perm[i];
+          perm[i] = perm[j];
+          perm[j] = t;
         }
-        for (let i = 0; i < 512; i++) this.p[i] = perm[i & 255];
+        for (let i = 0; i < 512; i++) {
+          this.p[i] = perm[i & 255];
+        }
       }
 
       noise2D(x, y) {
@@ -1065,17 +1174,18 @@
         const u = fade(xf);
         const v = fade(yf);
 
+        const p = this.p;
+        const aa = p[p[X] + Y];
+        const ab = p[p[X] + Y + 1];
+        const ba = p[p[X + 1] + Y];
+        const bb = p[p[X + 1] + Y + 1];
+
         const grad = (hash, gx, gy) => {
           const h = hash & 7;
-          const u_val = h < 4 ? gx : gy;
-          const v_val = h < 4 ? gy : gx;
-          return ((h & 1) ? -u_val : u_val) + ((h & 2) ? -2.0 * v_val : 2.0 * v_val);
+          const u1 = h < 4 ? gx : gy;
+          const v1 = h < 4 ? gy : gx;
+          return ((h & 1) ? -u1 : u1) + ((h & 2) ? -2.0 * v1 : 2.0 * v1);
         };
-
-        const aa = this.p[this.p[X] + Y];
-        const ab = this.p[this.p[X] + Y + 1];
-        const ba = this.p[this.p[X + 1] + Y];
-        const bb = this.p[this.p[X + 1] + Y + 1];
 
         const x1 = THREE.MathUtils.lerp(grad(aa, xf, yf), grad(ba, xf - 1, yf), u);
         const x2 = THREE.MathUtils.lerp(grad(ab, xf, yf - 1), grad(bb, xf - 1, yf - 1), u);
@@ -1084,7 +1194,60 @@
     }
 
     // =========================================================================
-    // 3. VOXEL WORLD ENGINE (Greedy Face Culling & Vertex Ambient Occlusion)
+    // 3. UNIFIED PROCEDURAL WIND SYSTEM (Smooth Gusts & Synced Reaction)
+    // =========================================================================
+    class WindSystem {
+      constructor() {
+        this.time = 0;
+        this.baseStrength = 0.35;
+        this.strength = 0.35;
+        this.targetStrength = 0.35;
+        this.angle = 0.55;
+        this.targetAngle = 0.55;
+
+        this.gustTimer = 6.0;
+        this.gustDuration = 5.0;
+        this.gustProgress = 0.0;
+        this.isGusting = false;
+        this.gustPeak = 1.6;
+      }
+
+      update(dt) {
+        this.time += dt;
+
+        if (!this.isGusting) {
+          this.gustTimer -= dt;
+          if (this.gustTimer <= 0) {
+            // Trigger a smooth natural gust
+            this.isGusting = true;
+            this.gustProgress = 0.0;
+            this.gustDuration = 4.5 + Math.random() * 3.0;
+            this.gustPeak = 1.4 + Math.random() * 0.7;
+            this.targetAngle = this.angle + (Math.random() - 0.5) * 0.6;
+          }
+        }
+
+        if (this.isGusting) {
+          this.gustProgress += dt / this.gustDuration;
+          if (this.gustProgress >= 1.0) {
+            this.isGusting = false;
+            this.gustTimer = 10.0 + Math.random() * 12.0;
+            this.targetStrength = this.baseStrength;
+          } else {
+            // Smooth sine bell curve for gust ramp-up and fade-out
+            const envelope = Math.sin(this.gustProgress * Math.PI);
+            this.targetStrength = this.baseStrength + (this.gustPeak - this.baseStrength) * envelope;
+          }
+        }
+
+        // Smooth angle and strength easing
+        this.angle = THREE.MathUtils.lerp(this.angle, this.targetAngle, dt * 0.6);
+        this.strength = THREE.MathUtils.lerp(this.strength, this.targetStrength, dt * 2.0);
+      }
+    }
+
+    // =========================================================================
+    // 4. VOXEL WORLD ENGINE (Greedy Face Culling & Vertex Sway Shader)
     // =========================================================================
     const CHUNK_SIZE = 16;
     const CHUNK_HEIGHT = 32;
@@ -1099,8 +1262,17 @@
         this.modifiedBlocks = new Map();
         this.structureBlocks = new Map();
         this.decoratedChunks = new Set();
+        this.chunkMeshQueue = [];
+        this.treeLanterns = [];
 
         this.lakeCenter = { x: -14, z: 12 };
+
+        this.leafWindUniforms = {
+          uTime: { value: 0.0 },
+          uWindStrength: { value: 0.35 },
+          uWindAngle: { value: 0.55 },
+          uSunsetGlow: { value: 0.0 }
+        };
 
         this.initMaterials();
         this.loadSavedWorld();
@@ -1124,7 +1296,65 @@
                b === BLOCK_DEFS.TORII_RED ||
                b === BLOCK_DEFS.ROOF_SLATE ||
                b === BLOCK_DEFS.CHERRY_HEARTWOOD ||
-               b === BLOCK_DEFS.LANTERN;
+               b === BLOCK_DEFS.LANTERN ||
+               b === BLOCK_DEFS.GROUND_PETALS_CARPET;
+      }
+
+      createLeafMaterial(textureKey) {
+        const mat = new THREE.MeshStandardMaterial({
+          map: this.textures[textureKey].texture,
+          transparent: true,
+          alphaTest: 0.25,
+          roughness: 0.65,
+          side: THREE.DoubleSide,
+          vertexColors: true
+        });
+
+        mat.onBeforeCompile = (shader) => {
+          shader.uniforms.uTime = this.leafWindUniforms.uTime;
+          shader.uniforms.uWindStrength = this.leafWindUniforms.uWindStrength;
+          shader.uniforms.uWindAngle = this.leafWindUniforms.uWindAngle;
+          shader.uniforms.uSunsetGlow = this.leafWindUniforms.uSunsetGlow;
+
+          shader.vertexShader = `
+            uniform float uTime;
+            uniform float uWindStrength;
+            uniform float uWindAngle;
+            attribute float aWindWeight;
+          ` + shader.vertexShader;
+
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `
+            #include <begin_vertex>
+            float windW = aWindWeight;
+            if (windW > 0.001) {
+              vec2 windDir = vec2(cos(uWindAngle), sin(uWindAngle));
+              float phase = dot(position.xz, vec2(0.35, 0.35)) + position.y * 0.55 + uTime * 2.2;
+              float gust = uWindStrength;
+              float swayX = sin(phase) * 0.12 * gust * windW + windDir.x * 0.08 * gust * windW;
+              float swayZ = cos(phase * 0.82 + 0.5) * 0.10 * gust * windW + windDir.y * 0.08 * gust * windW;
+              float swayY = sin(phase * 1.7) * 0.035 * gust * windW;
+              transformed += vec3(swayX, swayY, swayZ);
+            }
+            `
+          );
+
+          shader.fragmentShader = `
+            uniform float uSunsetGlow;
+          ` + shader.fragmentShader;
+
+          shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <dithering_fragment>',
+            `
+            #include <dithering_fragment>
+            if (uSunsetGlow > 0.001) {
+              gl_FragColor.rgb += vec3(0.42, 0.15, 0.22) * uSunsetGlow;
+            }
+            `
+          );
+        };
+        return mat;
       }
 
       initMaterials() {
@@ -1133,6 +1363,14 @@
             new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
             new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
             new THREE.MeshStandardMaterial({ map: this.textures['grass_top'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true })
+          ],
+          [BLOCK_DEFS.GROUND_PETALS_CARPET]: [
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
+            new THREE.MeshStandardMaterial({ map: this.textures['carpet_top'].texture, roughness: 0.85, vertexColors: true }),
             new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9, vertexColors: true }),
             new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true }),
             new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true })
@@ -1149,30 +1387,11 @@
             new THREE.MeshStandardMaterial({ map: this.textures['log_side'].texture, roughness: 0.8, vertexColors: true })
           ],
           [BLOCK_DEFS.WOOD_PLANKS]: new THREE.MeshStandardMaterial({ map: this.textures['planks'].texture, roughness: 0.75, vertexColors: true }),
-          [BLOCK_DEFS.LEAVES_LIGHT]: new THREE.MeshStandardMaterial({
-            map: this.textures['leaves_light'].texture,
-            transparent: true,
-            alphaTest: 0.25,
-            roughness: 0.65,
-            side: THREE.DoubleSide,
-            vertexColors: true
-          }),
-          [BLOCK_DEFS.LEAVES_DEEP]: new THREE.MeshStandardMaterial({
-            map: this.textures['leaves_deep'].texture,
-            transparent: true,
-            alphaTest: 0.25,
-            roughness: 0.65,
-            side: THREE.DoubleSide,
-            vertexColors: true
-          }),
-          [BLOCK_DEFS.LEAVES_WHITE]: new THREE.MeshStandardMaterial({
-            map: this.textures['leaves_white'].texture,
-            transparent: true,
-            alphaTest: 0.25,
-            roughness: 0.65,
-            side: THREE.DoubleSide,
-            vertexColors: true
-          }),
+          [BLOCK_DEFS.LEAVES_LIGHT]: this.createLeafMaterial('leaves_light'),
+          [BLOCK_DEFS.LEAVES_DEEP]: this.createLeafMaterial('leaves_deep'),
+          [BLOCK_DEFS.LEAVES_WHITE]: this.createLeafMaterial('leaves_white'),
+          [BLOCK_DEFS.LEAVES_SOFT]: this.createLeafMaterial('leaves_soft'),
+          [BLOCK_DEFS.LEAVES_MAGENTA]: this.createLeafMaterial('leaves_magenta'),
           [BLOCK_DEFS.GLASS]: new THREE.MeshStandardMaterial({
             map: this.textures['glass'].texture,
             transparent: true,
@@ -1184,6 +1403,12 @@
             emissive: new THREE.Color(0xffaa44),
             emissiveIntensity: 0.9,
             roughness: 0.4
+          }),
+          [BLOCK_DEFS.PAPER_LANTERN]: new THREE.MeshStandardMaterial({
+            map: this.textures['paper_lantern'].texture,
+            emissive: new THREE.Color(0xffb74d),
+            emissiveIntensity: 0.95,
+            roughness: 0.35
           }),
           [BLOCK_DEFS.WATER]: new THREE.MeshStandardMaterial({
             map: this.textures['water'].texture,
@@ -1231,6 +1456,8 @@
         this.chunks.clear();
         this.structureBlocks.clear();
         this.decoratedChunks.clear();
+        this.chunkMeshQueue = [];
+        this.treeLanterns = [];
         this.lanternLights.forEach(light => this.scene.remove(light));
         this.lanternLights.clear();
       }
@@ -1262,7 +1489,7 @@
         const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
         chunk.blocks[lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE] = blockId;
 
-        if (blockId === BLOCK_DEFS.LANTERN) {
+        if (blockId === BLOCK_DEFS.LANTERN || blockId === BLOCK_DEFS.PAPER_LANTERN) {
           const light = new THREE.PointLight(0xffa726, 2.2, 18);
           light.position.set(x + 0.5, y + 0.5, z + 0.5);
           this.scene.add(light);
@@ -1272,6 +1499,7 @@
           this.lanternLights.delete(key);
         }
 
+        // Rebuild only the affected chunk and direct neighbors
         this.buildChunkMesh(chunk);
         if (lx === 0) this.buildChunkMesh(this.getOrCreateChunk(cx - 1, cz));
         if (lx === CHUNK_SIZE - 1) this.buildChunkMesh(this.getOrCreateChunk(cx + 1, cz));
@@ -1302,10 +1530,10 @@
         const lakeDist = Math.hypot(wx - this.lakeCenter.x, (wz - this.lakeCenter.z) * 1.15);
         if (lakeDist < 18) {
           const depth = Math.floor((1.0 - lakeDist / 18) * 6.5);
-          return Math.max(5, step - depth); // Guaranteed minimum ground level in lake
+          return Math.max(5, step - depth);
         }
 
-        return Math.min(CHUNK_HEIGHT - 6, Math.max(7, step)); // Guaranteed minimum ground level on land
+        return Math.min(CHUNK_HEIGHT - 6, Math.max(7, step));
       }
 
       generateChunkTerrain(chunk) {
@@ -1325,13 +1553,10 @@
             for (let y = 0; y < CHUNK_HEIGHT; y++) {
               let block = BLOCK_DEFS.AIR;
               if (y < baseH - 3 || y <= 2) {
-                // Stone deeper, with solid foundation always at y <= 2
                 block = BLOCK_DEFS.STONE;
               } else if (y < baseH) {
-                // Dirt below
                 block = BLOCK_DEFS.DIRT;
               } else if (y === baseH) {
-                // Grass on top (or Sand near water)
                 if (baseH <= waterLevel + 1 && lakeDist < 20) {
                   block = BLOCK_DEFS.SAND;
                 } else {
@@ -1365,6 +1590,9 @@
         });
       }
 
+      // =========================================================================
+      // PROCEDURAL ORGANIC CHERRY BLOSSOM TREES
+      // =========================================================================
       buildTreesAndLandmarks(cx, cz) {
         const startX = cx * CHUNK_SIZE;
         const startZ = cz * CHUNK_SIZE;
@@ -1381,61 +1609,43 @@
           }
         };
 
-        for (let lz = 3; lz < CHUNK_SIZE; lz += 7) {
-          for (let lx = 3; lx < CHUNK_SIZE; lx += 7) {
-            const wx = startX + lx;
-            const wz = startZ + lz;
+        // Well-spaced organic tree distribution
+        for (let lz = 3; lz < CHUNK_SIZE; lz += 8) {
+          for (let lx = 3; lx < CHUNK_SIZE; lx += 8) {
+            const hash = Math.sin((startX + lx) * 73.123 + (startZ + lz) * 127.547) * 43758.5453;
+            const rand = hash - Math.floor(hash);
+            const jitterX = Math.floor((rand * 5) - 2);
+            const jitterZ = Math.floor((((rand * 10) % 1) * 5) - 2);
+            const wx = startX + lx + jitterX;
+            const wz = startZ + lz + jitterZ;
+
             const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
-            if (lakeDist < 16) continue;
+            if (lakeDist < 12) continue; // inside lake
 
             const gy = this.getTerrainHeight(wx, wz);
-            if (gy < 7 || gy > CHUNK_HEIGHT - 12) continue;
+            if (gy < 6 || gy > CHUNK_HEIGHT - 13) continue;
 
-            const hash = Math.sin(wx * 45.123 + wz * 91.547) * 43758.5453;
-            const rand = hash - Math.floor(hash);
+            // Avoid spawning on stone path
+            const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
+            if (Math.abs(wx - pathCurve) < 2.5) continue;
 
-            const trunkH = 5 + Math.floor(rand * 3);
-            const treeType = rand > 0.72 ? BLOCK_DEFS.LEAVES_WHITE : rand > 0.4 ? BLOCK_DEFS.LEAVES_DEEP : BLOCK_DEFS.LEAVES_LIGHT;
+            const isWeeping = (lakeDist >= 13 && lakeDist <= 21 && rand > 0.35);
+            const isLarge = (!isWeeping && rand > 0.65);
+            const isMedium = (!isWeeping && !isLarge && rand > 0.25);
+            const isSmall = (!isWeeping && !isLarge && !isMedium);
 
-            for (let ty = 1; ty <= trunkH; ty++) {
-              setStructBlock(wx, gy + ty, wz, BLOCK_DEFS.WOOD_LOG);
-            }
-
-            const branches = [
-              { dx: 1, dz: 1, by: trunkH - 1 },
-              { dx: -1, dz: 0, by: trunkH },
-              { dx: 0, dz: -1, by: trunkH + 1 }
-            ];
-            if (rand > 0.5) branches.push({ dx: -1, dz: 1, by: trunkH - 1 });
-
-            branches.forEach(b => {
-              setStructBlock(wx + b.dx, gy + b.by, wz + b.dz, BLOCK_DEFS.WOOD_LOG);
-              setStructBlock(wx + b.dx * 2, gy + b.by + 1, wz + b.dz * 2, BLOCK_DEFS.WOOD_LOG);
+            this.generateOrganicTree(wx, gy, wz, {
+              isWeeping,
+              isLarge,
+              isMedium,
+              isSmall,
+              seed: rand,
+              setBlock: setStructBlock
             });
-
-            const canopyCenterY = gy + trunkH + 2;
-            for (let cdy = -2; cdy <= 2; cdy++) {
-              const layerRad = cdy === 2 ? 2 : cdy === 1 ? 4 : cdy === 0 ? 4 : 3;
-              for (let cdx = -layerRad; cdx <= layerRad; cdx++) {
-                for (let cdz = -layerRad; cdz <= layerRad; cdz++) {
-                  const dist2D = Math.hypot(cdx, cdz);
-                  if (dist2D <= layerRad + 0.35) {
-                    if (Math.abs(cdx) === layerRad && Math.abs(cdz) === layerRad) continue;
-                    if (cdx === 0 && cdz === 0 && cdy <= 0) continue;
-                    setStructBlock(wx + cdx, canopyCenterY + cdy, wz + cdz, treeType);
-                  }
-                }
-              }
-            }
-
-            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
-              const hx = Math.round(Math.cos(angle) * 3);
-              const hz = Math.round(Math.sin(angle) * 3);
-              setStructBlock(wx + hx, canopyCenterY - 3, wz + hz, treeType);
-            }
           }
         }
 
+        // Landmarks at origin (Torii, Bridge, Stone Lanterns)
         if (cx === 0 && cz === 0) {
           const tX = 8, tZ = 8, tY = this.getTerrainHeight(8, 8);
           for (let sign of [-2, 2]) {
@@ -1457,6 +1667,7 @@
             setStructBlock(lp.x, ly + 3, lp.z, BLOCK_DEFS.ROOF_SLATE);
           });
 
+          // Arched wooden footbridge over scenic lake
           for (let bz = 5; bz <= 19; bz++) {
             const arch = Math.sin(((bz - 5) / 14) * Math.PI) * 1.5;
             const by = 7 + Math.floor(arch);
@@ -1465,6 +1676,183 @@
             }
             setStructBlock(-16, by + 1, bz, BLOCK_DEFS.WOOD_PLANKS);
             setStructBlock(-12, by + 1, bz, BLOCK_DEFS.WOOD_PLANKS);
+          }
+        }
+      }
+
+      generateOrganicTree(wx, gy, wz, opt) {
+        const { isWeeping, isLarge, isMedium, isSmall, seed, setBlock } = opt;
+
+        // 1. Soft carpet of fallen petals on ground (pink speckled grass, denser near trunk)
+        const carpetRadius = isLarge ? 5.5 : isWeeping ? 4.8 : isMedium ? 4.0 : 2.5;
+        const radCeil = Math.ceil(carpetRadius);
+        for (let dx = -radCeil; dx <= radCeil; dx++) {
+          for (let dz = -radCeil; dz <= radCeil; dz++) {
+            const dist = Math.hypot(dx, dz);
+            if (dist > carpetRadius) continue;
+            const prob = dist < 2.0 ? 0.90 : dist < 3.8 ? 0.65 : 0.32;
+            const gHash = Math.sin((wx + dx) * 51.3 + (wz + dz) * 79.7) * 43758.5453;
+            if (gHash - Math.floor(gHash) < prob) {
+              const gx = wx + dx;
+              const gz = wz + dz;
+              const gyBlock = this.getTerrainHeight(gx, gz);
+              if (gyBlock >= 7) {
+                const pathCurve = Math.sin(gz * 0.07) * 7.0 - 4;
+                if (Math.abs(gx - pathCurve) > 1.8) {
+                  setBlock(gx, gyBlock, gz, BLOCK_DEFS.GROUND_PETALS_CARPET);
+                }
+              }
+            }
+          }
+        }
+
+        // 2. Organic Trunk with Curve and Lean
+        const trunkH = isLarge ? (7 + Math.floor(seed * 3)) :
+                       isWeeping ? (7 + Math.floor(seed * 2)) :
+                       isMedium ? (5 + Math.floor(seed * 2)) : 4;
+
+        const leanAngle = seed * Math.PI * 2;
+        const leanDx = Math.cos(leanAngle);
+        const leanDz = Math.sin(leanAngle);
+
+        // Large trees have 2x2 base and root flares at ground
+        if (isLarge) {
+          for (let rx = 0; rx <= 1; rx++) {
+            for (let rz = 0; rz <= 1; rz++) {
+              setBlock(wx + rx, gy, wz + rz, BLOCK_DEFS.WOOD_LOG);
+              setBlock(wx + rx, gy + 1, wz + rz, BLOCK_DEFS.WOOD_LOG);
+            }
+          }
+          // Root buttresses
+          setBlock(wx - 1, gy, wz, BLOCK_DEFS.WOOD_LOG);
+          setBlock(wx + 2, gy, wz, BLOCK_DEFS.WOOD_LOG);
+          setBlock(wx, gy, wz - 1, BLOCK_DEFS.WOOD_LOG);
+          setBlock(wx + 1, gy, wz + 2, BLOCK_DEFS.WOOD_LOG);
+        }
+
+        // Ascend trunk with curve/lean
+        let curX = wx;
+        let curZ = wz;
+        const trunkPath = [];
+
+        for (let ty = 1; ty <= trunkH; ty++) {
+          const tProgress = ty / trunkH;
+          const shift = Math.floor(tProgress * 1.8);
+          curX = wx + Math.round(leanDx * shift);
+          curZ = wz + Math.round(leanDz * shift);
+
+          if (isLarge && ty <= 3) {
+            setBlock(curX, gy + ty, curZ, BLOCK_DEFS.WOOD_LOG);
+            setBlock(curX + 1, gy + ty, curZ, BLOCK_DEFS.WOOD_LOG);
+          } else {
+            setBlock(curX, gy + ty, curZ, BLOCK_DEFS.WOOD_LOG);
+          }
+          trunkPath.push({ x: curX, y: gy + ty, z: curZ });
+        }
+
+        const trunkTop = trunkPath[trunkPath.length - 1];
+
+        // 3. Branches Reaching Outward & Upward
+        const branches = [];
+        const numBranches = isLarge ? 5 : isWeeping ? 4 : isMedium ? 3 : 2;
+        const baseAngle = seed * Math.PI * 2;
+        const lanternSpots = [];
+
+        for (let b = 0; b < numBranches; b++) {
+          const bAngle = baseAngle + (b * (Math.PI * 2 / numBranches)) + (Math.sin(b * 3.7) * 0.35);
+          const bLen = isLarge ? (4 + (b % 3)) : isWeeping ? (5 + (b % 2)) : (3 + (b % 2));
+          const branchDirX = Math.cos(bAngle);
+          const branchDirZ = Math.sin(bAngle);
+
+          let bx = trunkTop.x;
+          let by = trunkTop.y - (b === 0 ? 1 : 0);
+          let bz = trunkTop.z;
+
+          for (let step = 1; step <= bLen; step++) {
+            bx = trunkTop.x + Math.round(branchDirX * step);
+            bz = trunkTop.z + Math.round(branchDirZ * step);
+
+            if (isWeeping) {
+              // Arch up initially, then droop down gracefully at tips
+              if (step <= 2) by += 1;
+              else if (step >= 4) by -= 1;
+            } else {
+              if (step === 2 || step === 4) by += 1;
+            }
+
+            setBlock(bx, by, bz, BLOCK_DEFS.WOOD_LOG);
+
+            // Potential lantern hang spot beneath mid bough
+            if (step === 2 && (isLarge || (isMedium && b === 0))) {
+              lanternSpots.push({ x: bx, y: by, z: bz });
+            }
+          }
+
+          branches.push({ endX: bx, endY: by, endZ: bz, isWeeping });
+        }
+
+        // 4. Canopy Clusters (Rounded, Overlapping, Airy with Gaps)
+        const addCluster = (ccx, ccy, ccz, rx, ry, rz, weeping) => {
+          const rx2 = rx * rx;
+          const ry2 = ry * ry;
+          const rz2 = rz * rz;
+
+          for (let cdy = -Math.ceil(ry); cdy <= Math.ceil(ry); cdy++) {
+            for (let cdx = -Math.ceil(rx); cdx <= Math.ceil(rx); cdx++) {
+              for (let cdz = -Math.ceil(rz); cdz <= Math.ceil(rz); cdz++) {
+                const dNormSq = (cdx * cdx) / rx2 + (cdy * cdy) / ry2 + (cdz * cdz) / rz2;
+                if (dNormSq > 1.05) continue;
+
+                // Irregular edges and gaps for light, airy look
+                const leafHash = Math.sin((ccx + cdx) * 31.7 + (ccy + cdy) * 59.3 + (ccz + cdz) * 83.1) * 43758.5453;
+                const leafRand = leafHash - Math.floor(leafHash);
+                if (dNormSq > 0.65 && leafRand < 0.14) continue;
+
+                // Blossom colors: white & pale on outside, soft & deep pink inside, magenta accents
+                let leafType;
+                if (dNormSq > 0.68) {
+                  if (leafRand > 0.88) leafType = BLOCK_DEFS.LEAVES_MAGENTA;
+                  else if (leafRand > 0.52) leafType = BLOCK_DEFS.LEAVES_WHITE;
+                  else leafType = BLOCK_DEFS.LEAVES_LIGHT;
+                } else if (dNormSq > 0.35) {
+                  if (leafRand > 0.55) leafType = BLOCK_DEFS.LEAVES_SOFT;
+                  else if (leafRand > 0.20) leafType = BLOCK_DEFS.LEAVES_LIGHT;
+                  else leafType = BLOCK_DEFS.LEAVES_DEEP;
+                } else {
+                  if (leafRand > 0.40) leafType = BLOCK_DEFS.LEAVES_DEEP;
+                  else leafType = BLOCK_DEFS.LEAVES_SOFT;
+                }
+
+                setBlock(ccx + cdx, ccy + cdy, ccz + cdz, leafType);
+
+                // Hanging blossom blocks dangling below canopy edges
+                if (cdy <= -Math.floor(ry * 0.5) && dNormSq > 0.45 && leafRand > 0.72) {
+                  const hangLen = weeping ? (2 + Math.floor(leafRand * 3)) : 1;
+                  for (let h = 1; h <= hangLen; h++) {
+                    setBlock(ccx + cdx, ccy + cdy - h, ccz + cdz, leafRand > 0.5 ? BLOCK_DEFS.LEAVES_WHITE : BLOCK_DEFS.LEAVES_LIGHT);
+                  }
+                }
+              }
+            }
+          }
+        };
+
+        // Central canopy puff
+        addCluster(trunkTop.x, trunkTop.y + 1, trunkTop.z, isLarge ? 3.8 : 2.8, 2.4, isLarge ? 3.8 : 2.8, isWeeping);
+
+        // Branch tip clusters
+        branches.forEach(br => {
+          const rad = isLarge ? 3.2 : isWeeping ? 2.8 : isMedium ? 2.6 : 2.0;
+          addCluster(br.endX, br.endY, br.endZ, rad, isWeeping ? 2.6 : 2.2, rad, isWeeping);
+        });
+
+        // 5. Hanging Paper Lanterns at Night
+        if ((isLarge || (isMedium && seed > 0.5)) && lanternSpots.length > 0) {
+          const numLants = isLarge ? Math.min(2, lanternSpots.length) : 1;
+          for (let li = 0; li < numLants; li++) {
+            const spot = lanternSpots[li];
+            setBlock(spot.x, spot.y - 1, spot.z, BLOCK_DEFS.PAPER_LANTERN);
+            this.treeLanterns.push({ x: spot.x, y: spot.y - 1, z: spot.z });
           }
         }
       }
@@ -1495,12 +1883,6 @@
           [[0,0,0], [0,1,0], [1,1,0], [1,0,0]]
         ];
 
-        const isTransparent = (b) => {
-          return b === BLOCK_DEFS.AIR || b === BLOCK_DEFS.WATER ||
-                 b === BLOCK_DEFS.GLASS || b === BLOCK_DEFS.LEAVES_LIGHT ||
-                 b === BLOCK_DEFS.LEAVES_DEEP || b === BLOCK_DEFS.LEAVES_WHITE;
-        };
-
         const blockBuckets = {};
 
         for (let lz = 0; lz < CHUNK_SIZE; lz++) {
@@ -1522,18 +1904,17 @@
                 if (b === BLOCK_DEFS.WATER) {
                   shouldRender = (neighbor === BLOCK_DEFS.AIR);
                 } else if (this.isOpaque(b)) {
-                  // Face culling hides faces between two opaque solid blocks
                   shouldRender = !this.isOpaque(neighbor);
                 } else if (b === BLOCK_DEFS.GLASS) {
                   shouldRender = (neighbor !== BLOCK_DEFS.GLASS);
                 } else {
-                  // Leaves and other semi-transparent blocks
+                  // Leaves and semi-transparent blocks
                   shouldRender = (neighbor !== b);
                 }
 
                 if (shouldRender) {
                   let subMatIdx = 0;
-                  if (b === BLOCK_DEFS.GRASS) {
+                  if (b === BLOCK_DEFS.GRASS || b === BLOCK_DEFS.GROUND_PETALS_CARPET) {
                     subMatIdx = f === 2 ? 2 : f === 3 ? 3 : 0;
                   } else if (b === BLOCK_DEFS.WOOD_LOG) {
                     subMatIdx = (f === 2 || f === 3) ? 2 : 0;
@@ -1547,7 +1928,8 @@
                       positions: [],
                       normals: [],
                       uvs: [],
-                      colors: []
+                      colors: [],
+                      windWeights: []
                     };
                   }
                   const bucket = blockBuckets[bucketKey];
@@ -1555,6 +1937,7 @@
                   const verts = faceVerts[f];
                   const norm = faceDirs[f];
 
+                  // Enhanced ambient occlusion inside canopies
                   const computeAO = (vx, vy, vz) => {
                     const cx1 = wx + vx;
                     const cy1 = y + vy;
@@ -1573,6 +1956,19 @@
                     computeAO(verts[3][0], verts[3][1], verts[3][2])
                   ];
 
+                  // Wind sway weight: leaves at canopy edge sway stronger than inner leaves
+                  let windWeight = 0.0;
+                  const isLeafBlock = (b >= BLOCK_DEFS.LEAVES_LIGHT && b <= BLOCK_DEFS.LEAVES_WHITE) ||
+                                      b === BLOCK_DEFS.LEAVES_SOFT || b === BLOCK_DEFS.LEAVES_MAGENTA;
+                  if (isLeafBlock) {
+                    let airNeighbors = 0;
+                    for (let checkF = 0; checkF < 6; checkF++) {
+                      const [cxD, cyD, czD] = faceDirs[checkF];
+                      if (this.getBlock(wx + cxD, y + cyD, wz + czD) === BLOCK_DEFS.AIR) airNeighbors++;
+                    }
+                    windWeight = airNeighbors >= 3 ? 1.0 : (airNeighbors >= 1 ? 0.6 : 0.25);
+                  }
+
                   const quadIndices = [0, 1, 2, 0, 2, 3];
                   const quadUVs = [[0,0], [0,1], [1,1], [0,0], [1,1], [1,0]];
 
@@ -1583,6 +1979,7 @@
                     bucket.uvs.push(quadUVs[i][0], quadUVs[i][1]);
                     const shade = ao[vi];
                     bucket.colors.push(shade, shade, shade);
+                    bucket.windWeights.push(windWeight);
                   }
                 }
               }
@@ -1594,10 +1991,12 @@
         const allNorm = [];
         const allUV = [];
         const allCol = [];
+        const allWind = [];
         const matList = [];
         const groups = [];
 
         let vertOffset = 0;
+
         for (const bucketKey in blockBuckets) {
           const b = blockBuckets[bucketKey];
           let mat = this.materials[b.blockId];
@@ -1617,6 +2016,7 @@
           for (let i = 0; i < b.normals.length; i++) allNorm.push(b.normals[i]);
           for (let i = 0; i < b.uvs.length; i++) allUV.push(b.uvs[i]);
           for (let i = 0; i < b.colors.length; i++) allCol.push(b.colors[i]);
+          for (let i = 0; i < b.windWeights.length; i++) allWind.push(b.windWeights[i]);
         }
 
         if (allPos.length === 0) return;
@@ -1626,6 +2026,7 @@
         geo.setAttribute('normal', new THREE.Float32BufferAttribute(allNorm, 3));
         geo.setAttribute('uv', new THREE.Float32BufferAttribute(allUV, 2));
         geo.setAttribute('color', new THREE.Float32BufferAttribute(allCol, 3));
+        geo.setAttribute('aWindWeight', new THREE.Float32BufferAttribute(allWind, 1));
 
         groups.forEach(g => geo.addGroup(g.start, g.count, g.materialIndex));
 
@@ -1658,14 +2059,11 @@
       updateAround(playerX, playerZ, radiusChunks = 3) {
         const pcx = Math.floor(playerX / CHUNK_SIZE);
         const pcz = Math.floor(playerZ / CHUNK_SIZE);
-        let newMeshes = 0;
 
-        // Phase 1: Ensure terrain exists for radius + 1 margin so trees and boundary face checks have ground
+        // Phase 1: Ensure terrain exists for radius + 1 margin
         for (let dz = -radiusChunks - 1; dz <= radiusChunks + 1; dz++) {
           for (let dx = -radiusChunks - 1; dx <= radiusChunks + 1; dx++) {
-            const cx = pcx + dx;
-            const cz = pcz + dz;
-            this.getOrCreateChunk(cx, cz);
+            this.getOrCreateChunk(pcx + dx, pcz + dz);
           }
         }
 
@@ -1682,27 +2080,28 @@
           }
         }
 
-        // Phase 3: Build meshes for chunks in radius that don't have meshes yet
+        // Phase 3: Enqueue chunks that need meshes; build order sorted by distance to player
         for (let dz = -radiusChunks; dz <= radiusChunks; dz++) {
           for (let dx = -radiusChunks; dx <= radiusChunks; dx++) {
             const cx = pcx + dx;
             const cz = pcz + dz;
             const chunk = this.getOrCreateChunk(cx, cz);
-            if (!chunk.mesh) {
-              this.buildChunkMesh(chunk);
-              newMeshes++;
+            if (!chunk.mesh && !this.chunkMeshQueue.includes(chunk)) {
+              this.chunkMeshQueue.push(chunk);
             }
           }
         }
 
-        if (newMeshes > 0) {
-          this.logStats();
-        }
+        this.chunkMeshQueue.sort((a, b) => {
+          const da = Math.hypot(a.cx - pcx, a.cz - pcz);
+          const db = Math.hypot(b.cx - pcx, b.cz - pcz);
+          return da - db;
+        });
       }
     }
 
     // =========================================================================
-    // 4. PROCEDURAL WEB AUDIO API SOUND ENGINE (Zero External Assets)
+    // 5. PROCEDURAL WEB AUDIO API SOUND ENGINE (Zero External Assets)
     // =========================================================================
     class ProceduralAudio {
       constructor() {
@@ -1716,36 +2115,49 @@
 
       init() {
         if (this.ctx) return;
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        this.ctx = new AudioContext();
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioCtx();
 
         this.masterGain = this.ctx.createGain();
         this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
 
-        this.startAmbientWind();
-        this.startKotoMelody();
-        this.startNaturalCreatures();
         this.isEnabled = true;
+        this.startAmbient();
+        this.startKotoMelody();
       }
 
       setVolume(val) {
         this.volume = val;
         if (this.masterGain && this.ctx) {
-          this.masterGain.gain.setTargetAtTime(this.isEnabled ? val : 0, this.ctx.currentTime, 0.05);
+          this.masterGain.gain.setValueAtTime(val, this.ctx.currentTime);
         }
       }
 
       toggleMute() {
-        this.isEnabled = !this.isEnabled;
-        if (this.masterGain && this.ctx) {
-          this.masterGain.gain.setTargetAtTime(this.isEnabled ? this.volume : 0, this.ctx.currentTime, 0.05);
+        if (!this.ctx) {
+          this.init();
+          return true;
         }
-        return this.isEnabled;
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+          this.isEnabled = true;
+          return true;
+        } else if (this.isEnabled) {
+          this.masterGain.gain.setValueAtTime(0, this.ctx.currentTime);
+          this.isEnabled = false;
+          return false;
+        } else {
+          this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+          this.isEnabled = true;
+          return true;
+        }
       }
 
-      startAmbientWind() {
-        const bufferSize = 2 * this.ctx.sampleRate;
+      startAmbient() {
+        if (!this.ctx) return;
+        // Gentle pink noise wind synth
+        const bufferSize = this.ctx.sampleRate * 2;
         const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
         const output = noiseBuffer.getChannelData(0);
         let b0 = 0, b1 = 0, b2 = 0;
@@ -1754,7 +2166,7 @@
           b0 = 0.99886 * b0 + white * 0.0555179;
           b1 = 0.99332 * b1 + white * 0.0750759;
           b2 = 0.96900 * b2 + white * 0.1538520;
-          output[i] = (b0 + b1 + b2) * 0.12;
+          output[i] = (b0 + b1 + b2) * 0.08;
         }
 
         const whiteNoise = this.ctx.createBufferSource();
@@ -1765,127 +2177,87 @@
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(420, this.ctx.currentTime);
 
-        const gainNode = this.ctx.createGain();
-        gainNode.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        const windGain = this.ctx.createGain();
+        windGain.gain.setValueAtTime(0.2, this.ctx.currentTime);
 
         whiteNoise.connect(filter);
-        filter.connect(gainNode);
-        gainNode.connect(this.masterGain);
+        filter.connect(windGain);
+        windGain.connect(this.masterGain);
         whiteNoise.start();
 
-        setInterval(() => {
-          if (!this.ctx || !this.isEnabled) return;
-          const t = this.ctx.currentTime;
-          const gust = 0.06 + Math.random() * 0.12;
-          filter.frequency.setTargetAtTime(350 + Math.random() * 500, t, 1.8);
-          gainNode.gain.setTargetAtTime(gust, t, 2.0);
-          setTimeout(() => {
-            if (this.ctx) {
-              filter.frequency.setTargetAtTime(320, this.ctx.currentTime, 3.0);
-              gainNode.gain.setTargetAtTime(0.06, this.ctx.currentTime, 3.5);
-            }
-          }, 3500);
-        }, 12000);
+        // Bird chirps during day
+        const playBird = () => {
+          if (!this.isEnabled || this.isNight || !this.ctx) {
+            setTimeout(playBird, 3000 + Math.random() * 5000);
+            return;
+          }
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          const now = this.ctx.currentTime;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(2400 + Math.random() * 600, now);
+          osc.frequency.exponentialRampToValueAtTime(3200 + Math.random() * 400, now + 0.12);
+          g.gain.setValueAtTime(0.06, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          osc.connect(g);
+          g.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 0.15);
+          setTimeout(playBird, 4000 + Math.random() * 6000);
+        };
+        setTimeout(playBird, 3000);
       }
 
       startKotoMelody() {
-        const playArpeggio = () => {
-          if (!this.ctx || !this.isEnabled) return;
-          const count = 3 + Math.floor(Math.random() * 4);
-          let delay = 0;
-          for (let i = 0; i < count; i++) {
-            const note = this.kotoNotes[Math.floor(Math.random() * this.kotoNotes.length)];
-            setTimeout(() => {
-              if (this.ctx && this.isEnabled) this.playPluck(note);
-            }, delay * 1000);
-            delay += 0.28 + Math.random() * 0.35;
+        if (!this.ctx) return;
+        const playNote = () => {
+          if (!this.isEnabled || !this.ctx) {
+            setTimeout(playNote, 4000);
+            return;
           }
+          const now = this.ctx.currentTime;
+          const noteFreq = this.kotoNotes[Math.floor(Math.random() * this.kotoNotes.length)];
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(noteFreq, now);
+
+          g.gain.setValueAtTime(0.18, now);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 2.2);
+
+          osc.connect(g);
+          g.connect(this.masterGain);
+          osc.start(now);
+          osc.stop(now + 2.3);
+
+          setTimeout(playNote, 3200 + Math.random() * 4500);
         };
-
-        setInterval(playArpeggio, 8000);
+        setTimeout(playNote, 2000);
       }
 
-      playPluck(freq) {
-        const t = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, t);
-
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.045, t + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
-
-        osc.connect(g);
-        g.connect(this.masterGain);
-        osc.start(t);
-        osc.stop(t + 2.3);
-      }
-
-      startNaturalCreatures() {
-        setInterval(() => {
-          if (!this.ctx || !this.isEnabled) return;
-          if (this.isNight) {
-            this.playCricket();
-          } else {
-            if (Math.random() > 0.4) this.playBirdChirp();
-          }
-        }, 4500);
-      }
-
-      playBirdChirp() {
-        const t = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(2600 + Math.random() * 400, t);
-        osc.frequency.exponentialRampToValueAtTime(3800 + Math.random() * 600, t + 0.08);
-        osc.frequency.exponentialRampToValueAtTime(2200, t + 0.16);
-
-        g.gain.setValueAtTime(0.02, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
-
-        osc.connect(g);
-        g.connect(this.masterGain);
-        osc.start(t);
-        osc.stop(t + 0.2);
-      }
-
-      playCricket() {
-        const t = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const g = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(4500, t);
-
-        g.gain.setValueAtTime(0.015, t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
-
-        osc.connect(g);
-        g.connect(this.masterGain);
-        osc.start(t);
-        osc.stop(t + 0.08);
-      }
-
-      playFootstep(blockId) {
-        if (!this.ctx || !this.isEnabled) return;
+      playFootstep(blockType) {
+        if (!this.isEnabled || !this.ctx) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
+        osc.type = 'sine';
 
-        let baseFreq = 95;
-        let toneType = 'triangle';
-        if (blockId === BLOCK_DEFS.STONE) { baseFreq = 260; toneType = 'sine'; }
-        else if (blockId === BLOCK_DEFS.WOOD_PLANKS || blockId === BLOCK_DEFS.WOOD_LOG) { baseFreq = 160; toneType = 'triangle'; }
-        else if (blockId === BLOCK_DEFS.SAND) { baseFreq = 70; toneType = 'square'; }
+        if (blockType === BLOCK_DEFS.STONE) {
+          osc.frequency.setValueAtTime(380, now);
+          osc.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+          g.gain.setValueAtTime(0.12, now);
+        } else if (blockType === BLOCK_DEFS.WOOD_PLANKS || blockType === BLOCK_DEFS.WOOD_LOG) {
+          osc.frequency.setValueAtTime(240, now);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.09);
+          g.gain.setValueAtTime(0.14, now);
+        } else {
+          // Grass or dirt
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.exponentialRampToValueAtTime(60, now + 0.08);
+          g.gain.setValueAtTime(0.1, now);
+        }
 
-        osc.type = toneType;
-        osc.frequency.setValueAtTime(baseFreq + Math.random() * 20, now);
-        osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
-
-        g.gain.setValueAtTime(0.05, now);
         g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
-
         osc.connect(g);
         g.connect(this.masterGain);
         osc.start(now);
@@ -1893,17 +2265,15 @@
       }
 
       playBlockBreak() {
-        if (!this.ctx || !this.isEnabled) return;
+        if (!this.isEnabled || !this.ctx) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.exponentialRampToValueAtTime(30, now + 0.12);
-
-        g.gain.setValueAtTime(0.08, now);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(160, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.14);
+        g.gain.setValueAtTime(0.2, now);
         g.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-
         osc.connect(g);
         g.connect(this.masterGain);
         osc.start(now);
@@ -1911,27 +2281,169 @@
       }
 
       playBlockPlace() {
-        if (!this.ctx || !this.isEnabled) return;
+        if (!this.isEnabled || !this.ctx) return;
         const now = this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const g = this.ctx.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(260, now);
-        osc.frequency.exponentialRampToValueAtTime(80, now + 0.09);
-
-        g.gain.setValueAtTime(0.07, now);
-        g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-
+        osc.frequency.setValueAtTime(340, now);
+        osc.frequency.exponentialRampToValueAtTime(560, now + 0.08);
+        g.gain.setValueAtTime(0.18, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
         osc.connect(g);
         g.connect(this.masterGain);
         osc.start(now);
-        osc.stop(now + 0.11);
+        osc.stop(now + 0.09);
       }
     }
 
     // =========================================================================
-    // 5. GROUND FLOWERS & FALLING CHERRY PETAL PARTICLES
+    // 6. INSTANCED FALLING PETALS (GPU Instancing & Smooth Sine Motion)
     // =========================================================================
+    class PetalSystem {
+      constructor(scene, count = 350) {
+        this.scene = scene;
+        this.count = count;
+        this.time = 0;
+        this.dummy = new THREE.Object3D();
+
+        const geo = new THREE.PlaneGeometry(0.24, 0.24);
+        const mat = new THREE.MeshBasicMaterial({
+          color: 0xffb7c8,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.92,
+          depthWrite: false
+        });
+
+        this.mesh = new THREE.InstancedMesh(geo, mat, count);
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        scene.add(this.mesh);
+
+        this.petals = [];
+        this.initPetals();
+
+        this.ripples = [];
+        this.rippleGeo = new THREE.RingGeometry(0.08, 0.18, 16);
+        this.rippleGeo.rotateX(-Math.PI / 2);
+        this.rippleMat = new THREE.MeshBasicMaterial({
+          color: 0xa5d8ff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.65,
+          depthWrite: false
+        });
+        this.rippleGroup = new THREE.Group();
+        scene.add(this.rippleGroup);
+      }
+
+      initPetals() {
+        this.petals = [];
+        for (let i = 0; i < this.count; i++) {
+          this.petals.push({
+            pos: new THREE.Vector3(
+              (Math.random() - 0.5) * 80,
+              10 + Math.random() * 20,
+              (Math.random() - 0.5) * 80
+            ),
+            rot: new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI),
+            fallSpeed: 0.7 + Math.random() * 0.75,
+            spinSpeed: new THREE.Vector3(
+              (Math.random() - 0.5) * 2.2,
+              (Math.random() - 0.5) * 2.8,
+              (Math.random() - 0.5) * 2.2
+            ),
+            flutterFreqX: 1.8 + Math.random() * 1.5,
+            flutterFreqZ: 1.4 + Math.random() * 1.6,
+            flutterAmpX: 0.35 + Math.random() * 0.45,
+            flutterAmpZ: 0.30 + Math.random() * 0.40,
+            phaseX: Math.random() * Math.PI * 2,
+            phaseZ: Math.random() * Math.PI * 2,
+            scale: 0.75 + Math.random() * 0.5,
+            windSensitivity: 0.8 + Math.random() * 0.5,
+            floatingTime: 0
+          });
+        }
+      }
+
+      burstAt(pos, count = 35) {
+        for (let i = 0; i < count; i++) {
+          const p = this.petals[Math.floor(Math.random() * this.petals.length)];
+          p.pos.set(
+            pos.x + (Math.random() - 0.5) * 2.5,
+            pos.y + (Math.random() - 0.5) * 1.8,
+            pos.z + (Math.random() - 0.5) * 2.5
+          );
+          p.fallSpeed = 0.5 + Math.random() * 1.4;
+          p.floatingTime = 0;
+        }
+      }
+
+      update(dt, playerPos, wind) {
+        this.time += dt;
+        const waterY = 6.02;
+        const windAngle = wind ? wind.angle : 0.55;
+        const windStrength = wind ? wind.strength : 0.35;
+        const windDx = Math.cos(windAngle) * windStrength;
+        const windDz = Math.sin(windAngle) * windStrength;
+
+        for (let i = 0; i < this.petals.length; i++) {
+          const p = this.petals[i];
+
+          if (p.pos.y <= waterY) {
+            p.pos.y = waterY;
+            p.floatingTime += dt;
+            p.pos.x += windDx * 0.25 * dt;
+            p.pos.z += windDz * 0.25 * dt;
+            p.rot.x = THREE.MathUtils.lerp(p.rot.x, 0, dt * 3);
+            p.rot.z = THREE.MathUtils.lerp(p.rot.z, 0, dt * 3);
+            p.rot.y += 0.2 * dt;
+
+            if (p.floatingTime > 3.0 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 55) {
+              this.recyclePetal(p, playerPos, windDx, windDz);
+            }
+          } else {
+            const flutterX = Math.sin(this.time * p.flutterFreqX + p.phaseX) * p.flutterAmpX;
+            const flutterZ = Math.cos(this.time * p.flutterFreqZ + p.phaseZ) * p.flutterAmpZ;
+
+            p.pos.y -= (p.fallSpeed - windStrength * 0.1) * dt;
+            p.pos.x += (windDx * p.windSensitivity + flutterX) * dt;
+            p.pos.z += (windDz * p.windSensitivity + flutterZ) * dt;
+
+            p.rot.x += (p.spinSpeed.x + flutterX * 1.2) * dt;
+            p.rot.y += p.spinSpeed.y * dt;
+            p.rot.z += (p.spinSpeed.z + flutterZ * 1.2) * dt;
+
+            if (p.pos.y < 3.0 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 65) {
+              this.recyclePetal(p, playerPos, windDx, windDz);
+            }
+          }
+
+          this.dummy.position.copy(p.pos);
+          this.dummy.rotation.copy(p.rot);
+          this.dummy.scale.set(p.scale, p.scale, p.scale);
+          this.dummy.updateMatrix();
+          this.mesh.setMatrixAt(i, this.dummy.matrix);
+        }
+        this.mesh.instanceMatrix.needsUpdate = true;
+      }
+
+      recyclePetal(p, playerPos, windDx, windDz) {
+        const upwindX = -windDx * 16;
+        const upwindZ = -windDz * 16;
+        const spreadX = (Math.random() - 0.5) * 55;
+        const spreadZ = (Math.random() - 0.5) * 55;
+
+        p.pos.set(
+          playerPos.x + upwindX + spreadX,
+          14 + Math.random() * 16,
+          playerPos.z + upwindZ + spreadZ
+        );
+        p.floatingTime = 0;
+        p.fallSpeed = 0.65 + Math.random() * 0.75;
+      }
+    }
+
     class GroundPetalSystem {
       constructor(scene, textureAtlas, world) {
         this.scene = scene;
@@ -1983,131 +2495,170 @@
       }
     }
 
-    class PetalSystem {
-      constructor(scene, count = 350) {
+    // =========================================================================
+    // 7. BLOCK POPPING ANIMATOR & BREAK PARTICLES
+    // =========================================================================
+    class BlockPlacementAnimator {
+      constructor(scene, materials) {
         this.scene = scene;
-        this.count = count;
-        this.windAngle = 0.5;
-        this.windSpeed = 1.0;
-
-        const geo = new THREE.PlaneGeometry(0.25, 0.25);
-        const mat = new THREE.MeshBasicMaterial({
-          color: 0xffadc0,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.9,
-          depthWrite: false
-        });
-
-        this.mesh = new THREE.InstancedMesh(geo, mat, count);
-        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-        scene.add(this.mesh);
-
-        this.petals = [];
-        this.initPetals();
-
-        this.ripples = [];
-        this.rippleGeo = new THREE.RingGeometry(0.08, 0.16, 16);
-        this.rippleGeo.rotateX(-Math.PI / 2);
-        this.rippleMat = new THREE.MeshBasicMaterial({
-          color: 0x90caf9,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.7,
-          depthWrite: false
-        });
-        this.rippleGroup = new THREE.Group();
-        scene.add(this.rippleGroup);
+        this.materials = materials;
+        this.animations = [];
+        this.boxGeo = new THREE.BoxGeometry(1.0, 1.0, 1.0);
       }
 
-      initPetals() {
-        this.petals = [];
-        for (let i = 0; i < this.count; i++) {
-          this.petals.push({
-            pos: new THREE.Vector3(
-              (Math.random() - 0.5) * 80,
-              12 + Math.random() * 18,
-              (Math.random() - 0.5) * 80
-            ),
-            rot: new THREE.Euler(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI),
-            rotSpeed: new THREE.Vector3(
-              (Math.random() - 0.5) * 2.5,
-              (Math.random() - 0.5) * 2.5,
-              (Math.random() - 0.5) * 2.5
-            ),
-            fallSpeed: 0.8 + Math.random() * 0.8,
-            driftSeed: Math.random() * 100,
-            floatingTime: 0
+      spawnPop(x, y, z, blockId) {
+        let mat = this.materials[blockId];
+        if (Array.isArray(mat)) mat = mat[0];
+        if (!mat) return;
+
+        const mesh = new THREE.Mesh(this.boxGeo, mat);
+        mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+        mesh.scale.set(0.2, 0.2, 0.2);
+        this.scene.add(mesh);
+
+        this.animations.push({
+          mesh,
+          timer: 0,
+          duration: 0.24
+        });
+      }
+
+      update(dt) {
+        for (let i = this.animations.length - 1; i >= 0; i--) {
+          const anim = this.animations[i];
+          anim.timer += dt;
+          const t = Math.min(anim.timer / anim.duration, 1.0);
+          // Elastic pop overshoot bounce
+          const scale = 1.0 + Math.sin(t * Math.PI) * 0.24;
+          anim.mesh.scale.set(scale, scale, scale);
+
+          if (t >= 1.0) {
+            this.scene.remove(anim.mesh);
+            this.animations.splice(i, 1);
+          }
+        }
+      }
+    }
+
+    class VoxelParticleSystem {
+      constructor(scene) {
+        this.scene = scene;
+        this.maxParticles = 80;
+        this.geo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
+
+        this.palette = {
+          [BLOCK_DEFS.GRASS]: [0x72ba2e, 0x65ab27, 0x3d2516, 0x5c9e22],
+          [BLOCK_DEFS.DIRT]: [0x3d2516, 0x4a2e1c, 0x331e11, 0x52331f],
+          [BLOCK_DEFS.STONE]: [0x686a73, 0x777983, 0x5d5f67, 0x464850],
+          [BLOCK_DEFS.SAND]: [0xddcb9d, 0xd4c18f, 0xe6d6ab],
+          [BLOCK_DEFS.WOOD_LOG]: [0x3d2128, 0x46272f, 0xbd796a, 0x2a141b],
+          [BLOCK_DEFS.WOOD_PLANKS]: [0xc79462, 0xbc8755, 0xd4a16f],
+          [BLOCK_DEFS.LEAVES_LIGHT]: [0xffb7ce, 0xffa3be, 0xffc6da, 0xffffff],
+          [BLOCK_DEFS.LEAVES_DEEP]: [0xf06292, 0xe91e63, 0xec407a],
+          [BLOCK_DEFS.LEAVES_WHITE]: [0xffffff, 0xfff0f3, 0xfde2e8],
+          [BLOCK_DEFS.LEAVES_SOFT]: [0xfca5a5, 0xf472b6, 0xfbcfe8],
+          [BLOCK_DEFS.LEAVES_MAGENTA]: [0xbe185d, 0x9d174d, 0xdb2777],
+          [BLOCK_DEFS.GROUND_PETALS_CARPET]: [0x72ba2e, 0xffb7ce, 0xf472b6, 0xffffff],
+          [BLOCK_DEFS.LANTERN]: [0xffaa44, 0x26170e, 0xffca28],
+          [BLOCK_DEFS.PAPER_LANTERN]: [0xfde68a, 0xdc2626, 0xffb74d],
+          [BLOCK_DEFS.TORII_RED]: [0xc92a2a, 0xd63333, 0xb52020],
+          [BLOCK_DEFS.ROOF_SLATE]: [0x2d3238, 0x383d45, 0x17191d]
+        };
+
+        this.pool = [];
+        for (let i = 0; i < this.maxParticles; i++) {
+          const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0 });
+          const mesh = new THREE.Mesh(this.geo, mat);
+          mesh.visible = false;
+          scene.add(mesh);
+          this.pool.push({
+            mesh,
+            pos: mesh.position,
+            vel: new THREE.Vector3(),
+            rotVel: new THREE.Vector3(),
+            timer: 0,
+            life: 0.7,
+            active: false
           });
         }
       }
 
-      burstAt(pos, count = 35) {
-        for (let i = 0; i < count; i++) {
-          const p = this.petals[Math.floor(Math.random() * this.petals.length)];
+      burst(x, y, z, blockId, count = 18) {
+        const colors = this.palette[blockId] || [0xffffff, 0xcccccc];
+        let spawned = 0;
+
+        for (let i = 0; i < this.pool.length && spawned < count; i++) {
+          const p = this.pool[i];
+          if (p.active) continue;
+
+          p.active = true;
+          p.timer = 0;
+          p.life = 0.55 + Math.random() * 0.3;
+          p.mesh.visible = true;
+          p.mesh.material.color.setHex(colors[Math.floor(Math.random() * colors.length)]);
+          p.mesh.material.opacity = 1.0;
+          p.mesh.scale.set(1, 1, 1);
+
           p.pos.set(
-            pos.x + (Math.random() - 0.5) * 3,
-            pos.y + (Math.random() - 0.5) * 2,
-            pos.z + (Math.random() - 0.5) * 3
+            x + 0.5 + (Math.random() - 0.5) * 0.7,
+            y + 0.5 + (Math.random() - 0.5) * 0.7,
+            z + 0.5 + (Math.random() - 0.5) * 0.7
           );
-          p.fallSpeed = 0.5 + Math.random() * 1.5;
+
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 2.0 + Math.random() * 3.5;
+          p.vel.set(
+            Math.cos(angle) * speed * 0.8,
+            2.5 + Math.random() * 3.5,
+            Math.sin(angle) * speed * 0.8
+          );
+
+          p.rotVel.set(
+            (Math.random() - 0.5) * 12,
+            (Math.random() - 0.5) * 12,
+            (Math.random() - 0.5) * 12
+          );
+
+          spawned++;
         }
       }
 
-      update(dt, playerPos) {
-        const dummy = new THREE.Object3D();
-        const waterY = 6.02;
+      update(dt) {
+        for (let i = 0; i < this.pool.length; i++) {
+          const p = this.pool[i];
+          if (!p.active) continue;
 
-        for (let i = 0; i < this.petals.length; i++) {
-          const p = this.petals[i];
-
-          p.pos.y -= p.fallSpeed * dt;
-          p.pos.x += Math.cos(this.windAngle) * this.windSpeed * dt + Math.sin(p.driftSeed + Date.now() * 0.002) * 0.4 * dt;
-          p.pos.z += Math.sin(this.windAngle) * this.windSpeed * dt;
-
-          p.rot.x += p.rotSpeed.x * dt;
-          p.rot.y += p.rotSpeed.y * dt;
-          p.rot.z += p.rotSpeed.z * dt;
-
-          if (p.pos.y <= waterY) {
-            p.pos.y = waterY;
-            p.floatingTime += dt;
-            if (p.floatingTime > 2.5 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 55) {
-              p.pos.set(
-                playerPos.x + (Math.random() - 0.5) * 70,
-                14 + Math.random() * 16,
-                playerPos.z + (Math.random() - 0.5) * 70
-              );
-              p.floatingTime = 0;
-            }
+          p.timer += dt;
+          if (p.timer >= p.life) {
+            p.active = false;
+            p.mesh.visible = false;
+            continue;
           }
 
-          if (p.pos.y < 3.0 || Math.hypot(p.pos.x - playerPos.x, p.pos.z - playerPos.z) > 65) {
-            p.pos.set(
-              playerPos.x + (Math.random() - 0.5) * 70,
-              14 + Math.random() * 16,
-              playerPos.z + (Math.random() - 0.5) * 70
-            );
-            p.floatingTime = 0;
-          }
+          p.vel.y -= 14.0 * dt;
+          p.pos.addScaledVector(p.vel, dt);
 
-          dummy.position.copy(p.pos);
-          dummy.rotation.copy(p.rot);
-          dummy.updateMatrix();
-          this.mesh.setMatrixAt(i, dummy.matrix);
+          p.mesh.rotation.x += p.rotVel.x * dt;
+          p.mesh.rotation.y += p.rotVel.y * dt;
+          p.mesh.rotation.z += p.rotVel.z * dt;
+
+          const progress = p.timer / p.life;
+          const shrink = Math.max(0.01, 1.0 - progress);
+          p.mesh.scale.set(shrink, shrink, shrink);
+          p.mesh.material.opacity = 1.0 - Math.pow(progress, 2.0);
         }
-        this.mesh.instanceMatrix.needsUpdate = true;
       }
     }
 
     // =========================================================================
-    // 6. 3RD-PERSON VOXEL CHARACTER (Original Pink Kimono)
+    // 8. 3RD-PERSON VOXEL CHARACTER (Pink Kimono with Damped Limbs)
     // =========================================================================
     class VoxelCharacter {
       constructor(scene) {
         this.group = new THREE.Group();
         this.visible = false;
         this.walkCycle = 0;
+        this.swingAmount = 0.0;
 
         const skinMat = new THREE.MeshStandardMaterial({ color: 0xffd1b3, roughness: 0.6 });
         const hairMat = new THREE.MeshStandardMaterial({ color: 0x211717, roughness: 0.8 });
@@ -2158,24 +2709,21 @@
         this.group.rotation.y = yaw;
         this.group.visible = this.visible;
 
+        this.swingAmount = THREE.MathUtils.lerp(this.swingAmount, isMoving ? 0.45 : 0.0, dt * 8.0);
         if (isMoving) {
           this.walkCycle += dt * 10;
-          const swing = Math.sin(this.walkCycle) * 0.45;
-          this.legL.rotation.x = swing;
-          this.legR.rotation.x = -swing;
-          this.armL.rotation.x = -swing;
-          this.armR.rotation.x = swing;
-        } else {
-          this.legL.rotation.x = 0;
-          this.legR.rotation.x = 0;
-          this.armL.rotation.x = 0;
-          this.armR.rotation.x = 0;
         }
+
+        const swing = Math.sin(this.walkCycle) * this.swingAmount;
+        this.legL.rotation.x = swing;
+        this.legR.rotation.x = -swing;
+        this.armL.rotation.x = -swing;
+        this.armR.rotation.x = swing;
       }
     }
 
     // =========================================================================
-    // 7. MAIN ENGINE ORCHESTRATOR
+    // 9. MAIN ENGINE ORCHESTRATOR
     // =========================================================================
     class CherrySanctuary {
       constructor() {
@@ -2184,6 +2732,7 @@
 
         this.audio = new ProceduralAudio();
         this.textures = TextureGenerator.generateAll();
+        this.wind = new WindSystem();
 
         this.isThirdPerson = false;
         this.isFlyMode = false;
@@ -2204,6 +2753,29 @@
           speed: 6.0,
           runSpeed: 10.5
         };
+
+        // Smooth camera controls & head-bob state
+        this.targetYaw = -2.2;
+        this.targetPitch = -0.05;
+        this.headBobTimer = 0;
+        this.bobIntensity = 0;
+        this.headBobX = 0;
+        this.headBobY = 0;
+        this.landingDip = 0;
+        this.currentCamDist = 0.0;
+        this.previousVelY = 0;
+        this.wasGrounded = true;
+
+        // Reusable vectors for zero allocation in animate loop
+        this._camOffset = new THREE.Vector3();
+        this._lookTarget = new THREE.Vector3();
+        this._moveDir = new THREE.Vector3();
+        this._wishMove = new THREE.Vector3();
+        this._forward = new THREE.Vector3();
+        this._right = new THREE.Vector3();
+
+        this.treeLanternPointLights = [];
+        this.currentLanternInt = 0.05;
 
         this.isDebugOverlayVisible = false;
         this.frameCount = 0;
@@ -2241,18 +2813,12 @@
         this.viewport.appendChild(this.renderer.domElement);
       }
 
-      isSolid(b) {
-        return this.world ? this.world.isSolid(b) : false;
-      }
-
       findSpawnPosition() {
-        // Find best spawn spot on the stone path overlooking the lake
         const candidates = [];
         for (let wz = 2; wz <= 10; wz++) {
           const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
           const wx = Math.round(pathCurve);
 
-          // Find the stone path at surface ground level
           let stoneY = -1;
           for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
             const b = this.world.getBlock(wx, y, wz);
@@ -2277,7 +2843,6 @@
         if (candidates.length > 0) {
           return candidates[0];
         }
-
         return { x: 1.5, y: 12.0, z: 10.5, block: BLOCK_DEFS.STONE };
       }
 
@@ -2325,36 +2890,39 @@
         this.player.vel.set(0, 0, 0);
         this.player.isGrounded = true;
         this.showToast('Đã đưa bạn về vị trí an toàn trên mặt đất!');
-        console.warn(`[Teleport Safeguard] Player repositioned to safe ground: (${bestSpot.x}, ${bestSpot.y}, ${bestSpot.z})`);
       }
 
       initWorld() {
         this.world = new VoxelWorld(this.scene, this.textures);
 
-        // 1. Generate chunks around initial target area first
         const targetSpawnX = -2;
         const targetSpawnZ = 5;
         this.world.updateAround(targetSpawnX, targetSpawnZ, 3);
 
-        // 2. Find exact highest solid block on stone path near lake
+        // Pre-mesh immediate chunks so player has ground beneath feet on start
+        while (this.world.chunkMeshQueue.length > 0) {
+          const chunk = this.world.chunkMeshQueue.shift();
+          this.world.buildChunkMesh(chunk);
+        }
+
         const spawn = this.findSpawnPosition();
         this.spawnPoint = { ...spawn };
 
-        // 3. Place player's feet exactly on top of the block
         this.player.pos.set(spawn.x, spawn.y, spawn.z);
         this.player.vel.set(0, 0, 0);
         this.player.isGrounded = true;
         this.player.yaw = -2.2;
         this.player.pitch = -0.05;
+        this.targetYaw = -2.2;
+        this.targetPitch = -0.05;
 
-        // Camera at feet height + 1.6 blocks
         this.camera.position.set(spawn.x, spawn.y + 1.6, spawn.z);
-
-        console.log(`[Spawn System] Player spawned at X:${spawn.x.toFixed(2)}, Y:${spawn.y.toFixed(2)}, Z:${spawn.z.toFixed(2)} on stone path (Feet on top of block Y:${spawn.y - 1}, Camera Y:${(spawn.y + 1.6).toFixed(2)})`);
-        this.world.logStats();
 
         this.groundPetals = new GroundPetalSystem(this.scene, this.textures, this.world);
         this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
+
+        this.blockPlacer = new BlockPlacementAnimator(this.scene, this.world.materials);
+        this.blockParticles = new VoxelParticleSystem(this.scene);
 
         const boxGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
         const wireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
@@ -2397,14 +2965,39 @@
         }));
         this.scene.add(this.fireflies);
 
-        this.setTimeOfDay('day');
+        // Setup point lights for hanging paper lanterns on trees
+        this.setupTreeLanternLights();
+
+        this.targetSkyCol = new THREE.Color(0xffe2ea);
+        this.targetFogCol = new THREE.Color(0xfcd6df);
+        this.targetSunCol = new THREE.Color(0xfff3db);
+        this.targetAmbCol = new THREE.Color(0xffd4de);
+        this.targetSunPos = new THREE.Vector3(65, 80, 45);
+        this.targetSunInt = 1.9;
+        this.targetFfOpacity = 0.0;
+        this.targetSunsetGlow = 0.0;
+        this.targetLanternInt = 0.05;
+
+        this.setTimeOfDay('day', false);
       }
 
-      setTimeOfDay(mode) {
+      setupTreeLanternLights() {
+        this.treeLanternPointLights.forEach(l => this.scene.remove(l));
+        this.treeLanternPointLights = [];
+
+        this.world.treeLanterns.forEach(tPos => {
+          const pLight = new THREE.PointLight(0xffa33b, 0.05, 14);
+          pLight.position.set(tPos.x + 0.5, tPos.y + 0.5, tPos.z + 0.5);
+          this.scene.add(pLight);
+          this.treeLanternPointLights.push(pLight);
+        });
+      }
+
+      setTimeOfDay(mode, smooth = true) {
         this.timeOfDay = mode;
         this.audio.isNight = (mode === 'night');
 
-        let skyCol, fogCol, sunCol, ambCol, sunInt, ffOpacity;
+        let skyCol, fogCol, sunCol, ambCol, sunInt, ffOpacity, sunsetGlow, lanternInt;
         const bloomEl = document.getElementById('bloom-overlay');
 
         if (mode === 'day') {
@@ -2414,34 +3007,80 @@
           ambCol = 0xffd4de;
           sunInt = 1.9;
           ffOpacity = 0.0;
-          this.sunLight.position.set(65, 80, 45);
-          bloomEl.style.opacity = '0.9';
+          sunsetGlow = 0.0;
+          lanternInt = 0.05;
+          this.targetSunPos.set(65, 80, 45);
+          if (bloomEl) bloomEl.style.opacity = '0.9';
         } else if (mode === 'sunset') {
           skyCol = 0xf472b6;
           fogCol = 0xfbcfe8;
           sunCol = 0xff9966;
           ambCol = 0x663d5e;
-          sunInt = 1.3;
-          ffOpacity = 0.2;
-          this.sunLight.position.set(120, 25, 40);
-          bloomEl.style.opacity = '0.6';
+          sunInt = 1.35;
+          ffOpacity = 0.25;
+          sunsetGlow = 0.45;
+          lanternInt = 0.85;
+          this.targetSunPos.set(120, 24, 40);
+          if (bloomEl) bloomEl.style.opacity = '0.65';
         } else {
+          // Night
           skyCol = 0x0a0c16;
           fogCol = 0x11162b;
           sunCol = 0xa5b4fc;
           ambCol = 0x1e2442;
           sunInt = 0.4;
           ffOpacity = 0.85;
-          this.sunLight.position.set(-60, 90, -40);
-          bloomEl.style.opacity = '0.1';
+          sunsetGlow = 0.0;
+          lanternInt = 2.4;
+          this.targetSunPos.set(-60, 90, -40);
+          if (bloomEl) bloomEl.style.opacity = '0.12';
         }
 
-        this.scene.background = new THREE.Color(skyCol);
-        this.scene.fog.color.setHex(fogCol);
-        this.sunLight.color.setHex(sunCol);
-        this.sunLight.intensity = sunInt;
-        this.ambientLight.color.setHex(ambCol);
-        this.fireflies.material.opacity = ffOpacity;
+        this.targetSkyCol.setHex(skyCol);
+        this.targetFogCol.setHex(fogCol);
+        this.targetSunCol.setHex(sunCol);
+        this.targetAmbCol.setHex(ambCol);
+        this.targetSunInt = sunInt;
+        this.targetFfOpacity = ffOpacity;
+        this.targetSunsetGlow = sunsetGlow;
+        this.targetLanternInt = lanternInt;
+
+        if (!smooth) {
+          this.scene.background = new THREE.Color(skyCol);
+          this.scene.fog.color.setHex(fogCol);
+          this.sunLight.color.setHex(sunCol);
+          this.sunLight.intensity = sunInt;
+          this.sunLight.position.copy(this.targetSunPos);
+          this.ambientLight.color.setHex(ambCol);
+          this.fireflies.material.opacity = ffOpacity;
+          if (this.world && this.world.leafWindUniforms) {
+            this.world.leafWindUniforms.uSunsetGlow.value = sunsetGlow;
+          }
+          this.currentLanternInt = lanternInt;
+          this.treeLanternPointLights.forEach(l => { l.intensity = lanternInt; });
+        }
+      }
+
+      updateTimeTransition(dt) {
+        const rate = 1.0 - Math.exp(-2.2 * dt); // smooth 1.5s - 2.0s transition
+
+        this.scene.background.lerp(this.targetSkyCol, rate);
+        this.scene.fog.color.lerp(this.targetFogCol, rate);
+        this.sunLight.color.lerp(this.targetSunCol, rate);
+        this.sunLight.intensity = THREE.MathUtils.lerp(this.sunLight.intensity, this.targetSunInt, rate);
+        this.sunLight.position.lerp(this.targetSunPos, rate);
+        this.ambientLight.color.lerp(this.targetAmbCol, rate);
+        this.fireflies.material.opacity = THREE.MathUtils.lerp(this.fireflies.material.opacity, this.targetFfOpacity, rate);
+
+        if (this.world && this.world.leafWindUniforms) {
+          const curGlow = this.world.leafWindUniforms.uSunsetGlow.value;
+          this.world.leafWindUniforms.uSunsetGlow.value = THREE.MathUtils.lerp(curGlow, this.targetSunsetGlow, rate);
+        }
+
+        this.currentLanternInt = THREE.MathUtils.lerp(this.currentLanternInt, this.targetLanternInt, rate);
+        this.treeLanternPointLights.forEach(l => {
+          l.intensity = this.currentLanternInt;
+        });
       }
 
       initHotbarUI() {
@@ -2505,7 +3144,7 @@
             hAuth.textContent = `— ${h.author}`;
             banner.classList.add('visible');
             hIdx++;
-          }, 1200);
+          }, 800);
         };
 
         cycle();
@@ -2532,7 +3171,6 @@
 
         document.getElementById('btn-cam').addEventListener('click', () => {
           this.isThirdPerson = !this.isThirdPerson;
-          this.character.visible = this.isThirdPerson;
           document.getElementById('btn-cam').classList.toggle('active', this.isThirdPerson);
           this.showToast(this.isThirdPerson ? 'Góc Nhìn Thứ 3 (Third Person)' : 'Góc Nhìn Thứ Nhất (FPS)');
         });
@@ -2550,6 +3188,8 @@
           const next = modes[(modes.indexOf(this.timeOfDay) + 1) % modes.length];
           this.setTimeOfDay(next);
           document.getElementById('btn-time').textContent = labels[next];
+          const setSelect = document.getElementById('set-time');
+          if (setSelect) setSelect.value = next;
         });
 
         document.getElementById('btn-menu').addEventListener('click', () => {
@@ -2565,6 +3205,7 @@
           if (confirm('Đặt lại toàn bộ thế giới về nguyên bản?')) {
             this.world.resetWorld();
             this.world.updateAround(this.player.pos.x, this.player.pos.z, 3);
+            this.setupTreeLanternLights();
             this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
             this.showToast('Đã làm mới thế giới!');
             this.togglePauseMenu(false);
@@ -2576,7 +3217,11 @@
           else document.exitFullscreen();
         });
 
-        document.getElementById('set-time').addEventListener('change', (e) => this.setTimeOfDay(e.target.value));
+        document.getElementById('set-time').addEventListener('change', (e) => {
+          this.setTimeOfDay(e.target.value);
+          const labels = { day: '☀️ Ban Ngày', sunset: '🌅 Hoàng Hôn', night: '🌙 Ban Đêm' };
+          document.getElementById('btn-time').textContent = labels[e.target.value];
+        });
         document.getElementById('set-volume').addEventListener('input', (e) => this.audio.setVolume(e.target.value / 100));
 
         window.addEventListener('keydown', (e) => {
@@ -2594,7 +3239,8 @@
             this.showToast(this.isCinematicTour ? 'Bật Chế Độ Tham Quan' : 'Thoát Tham Quan');
           } else if (e.code === 'KeyV') {
             this.isThirdPerson = !this.isThirdPerson;
-            this.character.visible = this.isThirdPerson;
+            document.getElementById('btn-cam').classList.toggle('active', this.isThirdPerson);
+            this.showToast(this.isThirdPerson ? 'Góc Nhìn Thứ 3 (Third Person)' : 'Góc Nhìn Thứ Nhất (FPS)');
           } else if (e.code === 'F3') {
             e.preventDefault();
             this.isDebugOverlayVisible = !this.isDebugOverlayVisible;
@@ -2627,11 +3273,12 @@
           this.isLocked = (document.pointerLockElement === this.viewport);
         });
 
+        // Smooth mouse look targets (no instant jitter)
         window.addEventListener('mousemove', (e) => {
           if (this.isLocked && !this.isCinematicTour) {
-            this.player.yaw -= e.movementX * 0.0022;
-            this.player.pitch -= e.movementY * 0.0022;
-            this.player.pitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.player.pitch));
+            this.targetYaw -= e.movementX * 0.0022;
+            this.targetPitch -= e.movementY * 0.0022;
+            this.targetPitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.targetPitch));
           }
         });
 
@@ -2717,12 +3364,16 @@
         const target = this.getTargetBlock();
         if (!target) return;
 
-        if (target.blockId === BLOCK_DEFS.LEAVES_LIGHT ||
-            target.blockId === BLOCK_DEFS.LEAVES_DEEP ||
-            target.blockId === BLOCK_DEFS.LEAVES_WHITE ||
-            target.blockId === BLOCK_DEFS.WOOD_LOG) {
+        const bId = target.blockId;
+        const isLeaves = (bId >= BLOCK_DEFS.LEAVES_LIGHT && bId <= BLOCK_DEFS.LEAVES_WHITE) ||
+                         bId === BLOCK_DEFS.LEAVES_SOFT || bId === BLOCK_DEFS.LEAVES_MAGENTA ||
+                         bId === BLOCK_DEFS.WOOD_LOG;
+        if (isLeaves) {
           this.petals.burstAt(new THREE.Vector3(target.x + 0.5, target.y + 0.5, target.z + 0.5), 35);
         }
+
+        // Spawn smooth block break debris particles
+        this.blockParticles.burst(target.x, target.y, target.z, bId, 18);
 
         this.world.setBlock(target.x, target.y, target.z, BLOCK_DEFS.AIR);
         this.audio.playBlockBreak();
@@ -2748,6 +3399,10 @@
 
         const selectedItem = HOTBAR_ITEMS[this.activeSlot];
         this.world.setBlock(p.x, p.y, p.z, selectedItem.id);
+
+        // Pop / scale animation on placed block
+        this.blockPlacer.spawnPop(p.x, p.y, p.z, selectedItem.id);
+
         this.audio.playBlockPlace();
       }
 
@@ -2802,10 +3457,12 @@
         document.getElementById('mob-place').addEventListener('click', () => this.handlePlaceBlock());
       }
 
+      // =========================================================================
+      // SMOOTH ACCELERATION, DECELERATION & NATURAL INERTIA
+      // =========================================================================
       updatePhysics(dt) {
         if (this.isCinematicTour) return;
 
-        // Auto-safeguard: if stuck inside block or fallen below world, teleport to safety
         if (!this.isFlyMode) {
           if (this.player.pos.y < 1.0 || this.checkAABB(this.player.pos.x, this.player.pos.y, this.player.pos.z, this.player.radius, this.player.height)) {
             this.teleportToSafeGround();
@@ -2814,66 +3471,100 @@
         }
 
         const isRunning = this.inputKeys['ShiftLeft'] || this.inputKeys['ShiftRight'];
-        const speed = this.isFlyMode ? 14.0 : (isRunning ? this.player.runSpeed : this.player.speed);
+        const maxSpeed = this.isFlyMode ? 14.0 : (isRunning ? this.player.runSpeed : this.player.speed);
 
-        const moveDir = new THREE.Vector3();
-        if (this.inputKeys['KeyW']) moveDir.z -= 1;
-        if (this.inputKeys['KeyS']) moveDir.z += 1;
-        if (this.inputKeys['KeyA']) moveDir.x -= 1;
-        if (this.inputKeys['KeyD']) moveDir.x += 1;
+        this._moveDir.set(0, 0, 0);
+        if (this.inputKeys['KeyW']) this._moveDir.z -= 1;
+        if (this.inputKeys['KeyS']) this._moveDir.z += 1;
+        if (this.inputKeys['KeyA']) this._moveDir.x -= 1;
+        if (this.inputKeys['KeyD']) this._moveDir.x += 1;
 
-        const isMoving = moveDir.lengthSq() > 0;
+        const isMoving = this._moveDir.lengthSq() > 0;
 
         if (this.isFlyMode) {
           if (isMoving) {
-            moveDir.normalize();
-            const forward = new THREE.Vector3(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
-            const right = new THREE.Vector3(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
-            const moveVec = new THREE.Vector3().addScaledVector(forward, -moveDir.z).addScaledVector(right, moveDir.x);
-            this.player.pos.addScaledVector(moveVec, speed * dt);
+            this._moveDir.normalize();
+            this._forward.set(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
+            this._right.set(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
+            this._wishMove.set(0, 0, 0)
+              .addScaledVector(this._forward, -this._moveDir.z)
+              .addScaledVector(this._right, this._moveDir.x);
+            this.player.pos.addScaledVector(this._wishMove, maxSpeed * dt);
           }
-          if (this.inputKeys['Space']) this.player.pos.y += speed * dt;
-          if (this.inputKeys['KeyC'] || this.inputKeys['ControlLeft']) this.player.pos.y -= speed * dt;
+          if (this.inputKeys['Space']) this.player.pos.y += maxSpeed * dt;
+          if (this.inputKeys['KeyC'] || this.inputKeys['ControlLeft']) this.player.pos.y -= maxSpeed * dt;
           return;
         }
 
         const waistBlock = this.world.getBlock(Math.floor(this.player.pos.x), Math.floor(this.player.pos.y + 0.8), Math.floor(this.player.pos.z));
         this.player.isInWater = (waistBlock === BLOCK_DEFS.WATER);
 
-        if (isMoving) {
-          moveDir.normalize();
-          const forward = new THREE.Vector3(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
-          const right = new THREE.Vector3(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
-          const wishMove = new THREE.Vector3()
-            .addScaledVector(forward, -moveDir.z)
-            .addScaledVector(right, moveDir.x);
+        // Smooth acceleration & deceleration with natural inertia
+        const accel = this.player.isGrounded ? (isRunning ? 18.0 : 14.0) : 4.5;
+        const friction = this.player.isGrounded ? 11.0 : 1.2;
 
-          const curSpeed = this.player.isInWater ? speed * 0.5 : speed;
-          this.player.vel.x = THREE.MathUtils.lerp(this.player.vel.x, wishMove.x * curSpeed, dt * 10);
-          this.player.vel.z = THREE.MathUtils.lerp(this.player.vel.z, wishMove.z * curSpeed, dt * 10);
+        if (isMoving) {
+          this._moveDir.normalize();
+          this._forward.set(-Math.sin(this.player.yaw), 0, -Math.cos(this.player.yaw));
+          this._right.set(Math.cos(this.player.yaw), 0, -Math.sin(this.player.yaw));
+          this._wishMove.set(0, 0, 0)
+            .addScaledVector(this._forward, -this._moveDir.z)
+            .addScaledVector(this._right, this._moveDir.x);
+
+          const curSpeed = this.player.isInWater ? maxSpeed * 0.5 : maxSpeed;
+          const targetVx = this._wishMove.x * curSpeed;
+          const targetVz = this._wishMove.z * curSpeed;
+
+          const blend = 1.0 - Math.exp(-accel * dt);
+          this.player.vel.x = THREE.MathUtils.lerp(this.player.vel.x, targetVx, blend);
+          this.player.vel.z = THREE.MathUtils.lerp(this.player.vel.z, targetVz, blend);
 
           if (this.player.isGrounded && Math.random() < 0.12) {
             const footB = this.world.getBlock(Math.floor(this.player.pos.x), Math.floor(this.player.pos.y - 0.2), Math.floor(this.player.pos.z));
             this.audio.playFootstep(footB);
           }
         } else {
-          this.player.vel.x = THREE.MathUtils.lerp(this.player.vel.x, 0, dt * 12);
-          this.player.vel.z = THREE.MathUtils.lerp(this.player.vel.z, 0, dt * 12);
+          const blend = 1.0 - Math.exp(-friction * dt);
+          this.player.vel.x = THREE.MathUtils.lerp(this.player.vel.x, 0, blend);
+          this.player.vel.z = THREE.MathUtils.lerp(this.player.vel.z, 0, blend);
+          if (Math.hypot(this.player.vel.x, this.player.vel.z) < 0.01) {
+            this.player.vel.x = 0;
+            this.player.vel.z = 0;
+          }
         }
+
+        // Natural Gravity Curve with apex float
+        this.previousVelY = this.player.vel.y;
+        this.wasGrounded = this.player.isGrounded;
 
         if (this.player.isInWater) {
           this.player.vel.y = THREE.MathUtils.lerp(this.player.vel.y, 0.4, dt * 4);
           if (this.inputKeys['Space']) this.player.vel.y = 3.5;
         } else {
-          this.player.vel.y -= 24.0 * dt;
+          let gravity = 24.0;
+          if (Math.abs(this.player.vel.y) < 1.8) {
+            gravity = 17.5; // slight float at jump peak
+          } else if (this.player.vel.y < 0) {
+            gravity = 26.5; // firm descent
+          }
+          this.player.vel.y -= gravity * dt;
           if (this.player.vel.y < -35) this.player.vel.y = -35;
+
           if (this.player.isGrounded && this.inputKeys['Space']) {
-            this.player.vel.y = 8.5;
+            this.player.vel.y = 8.6;
             this.player.isGrounded = false;
           }
         }
 
         this.moveWithCollision(dt);
+
+        // Tiny camera dip on landing
+        if (!this.wasGrounded && this.player.isGrounded) {
+          const impact = Math.abs(this.previousVelY);
+          if (impact > 3.0) {
+            this.landingDip = Math.min(impact * 0.016, 0.14);
+          }
+        }
       }
 
       moveWithCollision(dt) {
@@ -2914,7 +3605,6 @@
           p.isGrounded = false;
         } else {
           if (p.vel.y < 0) {
-            // Find highest solid block top surface under player footprint
             let floorY = -1;
             const minX = Math.floor(p.pos.x - r + 0.001);
             const maxX = Math.floor(p.pos.x + r - 0.001);
@@ -2946,14 +3636,12 @@
           }
         }
 
-        // Standing ground check
         if (!p.isGrounded && p.vel.y === 0) {
           if (this.checkAABB(p.pos.x, p.pos.y - 0.05, p.pos.z, r, h)) {
             p.isGrounded = true;
           }
         }
 
-        // Fall below world safeguard
         if (p.pos.y < 1.0) {
           this.teleportToSafeGround();
         }
@@ -3001,8 +3689,81 @@
         this.camera.lookAt(-10, 8, 12);
       }
 
+      // =========================================================================
+      // CAMERA SYSTEM (Smooth Mouse Look, Head-Bob, Dynamic FOV, Smooth Orbit)
+      // =========================================================================
+      updateCamera(dt) {
+        // Smooth mouse look interpolation (no jitter)
+        const lookSmooth = 1.0 - Math.exp(-32.0 * dt);
+        this.player.yaw = THREE.MathUtils.lerp(this.player.yaw, this.targetYaw, lookSmooth);
+        this.player.pitch = THREE.MathUtils.lerp(this.player.pitch, this.targetPitch, lookSmooth);
+
+        // Smooth landing dip spring recovery
+        this.landingDip = THREE.MathUtils.lerp(this.landingDip, 0, 1.0 - Math.exp(-12.0 * dt));
+
+        // Subtle head-bob while walking that fades out smoothly when stopping
+        const horizSpeed = Math.hypot(this.player.vel.x, this.player.vel.z);
+        const isRunning = (this.inputKeys['ShiftLeft'] || this.inputKeys['ShiftRight']) && horizSpeed > 1.0;
+        const targetBobIntensity = (this.player.isGrounded && horizSpeed > 0.5) ? Math.min(horizSpeed / this.player.speed, 1.0) : 0.0;
+        this.bobIntensity = THREE.MathUtils.lerp(this.bobIntensity, targetBobIntensity, 1.0 - Math.exp(-7.0 * dt));
+
+        if (this.bobIntensity > 0.001) {
+          this.headBobTimer += dt * (isRunning ? 13.5 : 9.0);
+          this.headBobY = Math.sin(this.headBobTimer * 2.0) * 0.04 * this.bobIntensity;
+          this.headBobX = Math.cos(this.headBobTimer) * 0.02 * this.bobIntensity;
+        } else {
+          this.headBobY = 0;
+          this.headBobX = 0;
+        }
+
+        // Gentle FOV increase when running
+        const targetFov = isRunning ? 73.0 : 65.0;
+        if (Math.abs(this.camera.fov - targetFov) > 0.05) {
+          this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 1.0 - Math.exp(-6.0 * dt));
+          this.camera.updateProjectionMatrix();
+        }
+
+        // Smooth first-to-third person camera zoom transition
+        const targetCamDist = this.isThirdPerson ? 3.8 : 0.0;
+        this.currentCamDist = THREE.MathUtils.lerp(this.currentCamDist, targetCamDist, 1.0 - Math.exp(-9.0 * dt));
+
+        if (this.currentCamDist > 0.1) {
+          this.character.visible = true;
+          const dist = this.currentCamDist;
+          this._camOffset.set(
+            Math.sin(this.player.yaw) * dist * Math.cos(this.player.pitch) + this.headBobX,
+            1.6 + Math.sin(this.player.pitch) * dist + this.headBobY - this.landingDip,
+            Math.cos(this.player.yaw) * dist * Math.cos(this.player.pitch)
+          );
+          this.camera.position.copy(this.player.pos).add(this._camOffset);
+          this.camera.lookAt(
+            this.player.pos.x,
+            this.player.pos.y + 1.4,
+            this.player.pos.z
+          );
+        } else {
+          this.character.visible = false;
+          this.camera.position.set(
+            this.player.pos.x + this.headBobX,
+            this.player.pos.y + 1.6 + this.headBobY - this.landingDip,
+            this.player.pos.z
+          );
+          this._lookTarget.set(
+            this.camera.position.x - Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
+            this.camera.position.y + Math.sin(this.player.pitch),
+            this.camera.position.z - Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
+          );
+          this.camera.lookAt(this._lookTarget);
+        }
+      }
+
       updateMinimap() {
+        const now = performance.now();
+        if (this.lastMinimapUpdate && now - this.lastMinimapUpdate < 150) return;
+        this.lastMinimapUpdate = now;
+
         const canvas = document.getElementById('minimap-canvas');
+        if (!canvas) return;
         const ctx = canvas.getContext('2d');
         const w = canvas.width;
         const h = canvas.height;
@@ -3027,7 +3788,9 @@
 
             if (b === BLOCK_DEFS.WATER) ctx.fillStyle = '#0288d1';
             else if (b === BLOCK_DEFS.GRASS) ctx.fillStyle = '#65ab27';
-            else if (b === BLOCK_DEFS.LEAVES_LIGHT || b === BLOCK_DEFS.LEAVES_DEEP || b === BLOCK_DEFS.LEAVES_WHITE) ctx.fillStyle = '#f472b6';
+            else if (b === BLOCK_DEFS.GROUND_PETALS_CARPET) ctx.fillStyle = '#d946ef';
+            else if (b >= BLOCK_DEFS.LEAVES_LIGHT && b <= BLOCK_DEFS.LEAVES_WHITE) ctx.fillStyle = '#f472b6';
+            else if (b === BLOCK_DEFS.LEAVES_SOFT || b === BLOCK_DEFS.LEAVES_MAGENTA) ctx.fillStyle = '#ec4899';
             else if (b === BLOCK_DEFS.TORII_RED) ctx.fillStyle = '#ef4444';
             else if (b === BLOCK_DEFS.WOOD_PLANKS) ctx.fillStyle = '#d4a264';
             else ctx.fillStyle = '#5d5f67';
@@ -3049,44 +3812,43 @@
         ctx.restore();
       }
 
+      // Single Unified RequestAnimationFrame Loop
       animate() {
         requestAnimationFrame(this.animate);
-        const dt = Math.min(this.clock.getDelta(), 0.1);
 
+        // Clamp delta time to avoid physics/visual jumps after tab inactivity
+        const dt = Math.min(this.clock.getDelta(), 0.05);
+
+        // 1. Update Wind System & Vertex Shaders
+        this.wind.update(dt);
+        if (this.world && this.world.leafWindUniforms) {
+          this.world.leafWindUniforms.uTime.value = this.wind.time;
+          this.world.leafWindUniforms.uWindStrength.value = this.wind.strength;
+          this.world.leafWindUniforms.uWindAngle.value = this.wind.angle;
+        }
+
+        // 2. Smooth Time of Day Transitions
+        this.updateTimeTransition(dt);
+
+        // 3. Player Movement & Physics
         this.updatePhysics(dt);
 
+        // 4. Camera Look & Follow
         if (!this.isCinematicTour) {
-          if (this.isThirdPerson) {
-            const dist = 3.8;
-            const camOffset = new THREE.Vector3(
-              Math.sin(this.player.yaw) * dist * Math.cos(this.player.pitch),
-              1.6 + Math.sin(this.player.pitch) * dist,
-              Math.cos(this.player.yaw) * dist * Math.cos(this.player.pitch)
-            );
-            this.camera.position.copy(this.player.pos).add(camOffset);
-            this.camera.lookAt(
-              this.player.pos.x,
-              this.player.pos.y + 1.4,
-              this.player.pos.z
-            );
-          } else {
-            // Camera at feet height + 1.6 blocks
-            this.camera.position.copy(this.player.pos).add(new THREE.Vector3(0, 1.6, 0));
-            const lookTarget = this.camera.position.clone().add(new THREE.Vector3(
-              -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
-              Math.sin(this.player.pitch),
-              -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
-            ));
-            this.camera.lookAt(lookTarget);
-          }
+          this.updateCamera(dt);
         } else {
           this.updateCinematicTour(dt);
         }
 
+        // 5. Character Animation
         const isMoving = this.inputKeys['KeyW'] || this.inputKeys['KeyS'] || this.inputKeys['KeyA'] || this.inputKeys['KeyD'];
         this.character.update(this.player.pos, this.player.yaw, isMoving, dt);
 
-        // Update chunks when crossing chunk boundaries
+        // 6. Block Pop & Break Particle Systems
+        this.blockPlacer.update(dt);
+        this.blockParticles.update(dt);
+
+        // 7. Dynamic Chunk Management & Streaming
         const pcx = Math.floor(this.player.pos.x / CHUNK_SIZE);
         const pcz = Math.floor(this.player.pos.z / CHUNK_SIZE);
         if (pcx !== this.lastChunkX || pcz !== this.lastChunkZ) {
@@ -3095,7 +3857,29 @@
           this.world.updateAround(this.player.pos.x, this.player.pos.z, 2);
         }
 
-        // Live Debug Overlay & FPS
+        // Spread chunk meshing across frames: build at most 1 chunk per frame
+        if (this.world.chunkMeshQueue.length > 0) {
+          const nextChunk = this.world.chunkMeshQueue.shift();
+          if (nextChunk && !nextChunk.mesh) {
+            this.world.buildChunkMesh(nextChunk);
+          }
+        }
+
+        // 8. Petal Particle Flutter
+        this.petals.update(dt, this.player.pos, this.wind);
+
+        // 9. Highlight Box on Look Target
+        const target = this.getTargetBlock();
+        if (target && !this.isCinematicTour) {
+          this.highlightBox.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
+          this.highlightBox.visible = true;
+        } else {
+          this.highlightBox.visible = false;
+        }
+
+        // 10. Minimap & Debug Overlay
+        this.updateMinimap();
+
         this.frameCount = (this.frameCount || 0) + 1;
         const now = performance.now();
         if (!this.lastFpsUpdate) this.lastFpsUpdate = now;
@@ -3109,16 +3893,6 @@
           }
         }
 
-        const target = this.getTargetBlock();
-        if (target && !this.isCinematicTour) {
-          this.highlightBox.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
-          this.highlightBox.visible = true;
-        } else {
-          this.highlightBox.visible = false;
-        }
-
-        this.petals.update(dt, this.player.pos);
-        this.updateMinimap();
         this.renderer.render(this.scene, this.camera);
       }
 
