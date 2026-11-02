@@ -18,6 +18,7 @@ export const SYNC_MAX_SHARED_EDITS = 2000;
 export const SYNC_MESSAGE_SPACING_MS = 100; // public relays do not like bursts
 export const SYNC_MAX_DELAY_MS = 1200; // players answer at slightly different moments, not all at once
 export const SYNC_MAX_EDITS_PER_SECOND = 1000;
+export const SYNC_RESEND_DELAY_MS = 3000;
 export const SYNC_MAX_CLOCK_AHEAD_MS = 10 * 60 * 1000;
 export const MULTIPLAYER_DEFAULT_ROOM = 'vuon-chung';
 export const MULTIPLAYER_MAX_PEERS = 8;
@@ -71,6 +72,7 @@ export class MultiplayerClient {
   declare name: any;
   declare peers: any;
   declare relays: any;
+  declare resendTimer: any;
   declare selfId: any;
   declare sequence: any;
   declare shareTimer: any;
@@ -193,10 +195,19 @@ export class MultiplayerClient {
       peer.editsInWindow = 0;
     }
     const valid = edits.filter(isValidEdit);
-    // Beyond the limit edits are dropped, and only come back the next time worlds are compared
     const allowed = valid.slice(0, Math.max(0, SYNC_MAX_EDITS_PER_SECOND - peer.editsInWindow));
-    peer.editsInWindow += allowed.length;
-    if (allowed.length) this.game.world.applySharedEdits(allowed);
+    // Only real changes count: each message arrives once per relay, and the copy changes nothing
+    if (allowed.length) peer.editsInWindow += this.game.world.applySharedEdits(allowed);
+    if (allowed.length < valid.length) this.requestResend();
+  }
+
+  // Some edits went over the limit, so ask for them again once things have calmed down
+  requestResend() {
+    if (this.resendTimer) return;
+    this.resendTimer = setTimeout(() => {
+      this.resendTimer = null;
+      this.publish({ needEdits: true });
+    }, SYNC_RESEND_DELAY_MS);
   }
 
   // Someone new has appeared, or asked: send them this world's edits, and they send theirs.
