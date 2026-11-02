@@ -1,6 +1,6 @@
 import { AnimalSystem } from '../creatures/AnimalSystem';
 import { BLOCK_DEFS, BLOCK_NAMES, HOTBAR_ITEMS } from '../world/blocks';
-import { BLOCK_REACH, CHUNK_HEIGHT, CHUNK_SIZE, FULLSCREEN_HINT_MS, IS_TOUCH_DEVICE, LANTERN_REFRESH_MS, LOW_FPS_READINGS, LOW_FPS_THRESHOLD, MIN_RENDER_SCALE, OUT_OF_REACH_MESSAGE, QUALITY, STREAM_BUDGET_MS, SWIM_BUOYANCY, SWIM_DIVE_SPEED, SWIM_PITCH_DEADZONE, SWIM_VERTICAL_SPEED, TOUCH_LOOK_SPEED, UNDERWATER_FOG_COLOR, UNDERWATER_FOG_DENSITY, WATER_EXIT_SPEED, WATER_FLOW_SPEED, fogDensityForRadius, getFullscreenElement, isRunningAsHomeScreenApp } from '../config';
+import { BLOCK_REACH, CHUNK_HEIGHT, CHUNK_SIZE, FULLSCREEN_HINT_MS, FULLSCREEN_REFUSED_MESSAGE, IS_TOUCH_DEVICE, LANTERN_REFRESH_MS, LOW_FPS_READINGS, LOW_FPS_THRESHOLD, MIN_RENDER_SCALE, OUT_OF_REACH_MESSAGE, QUALITY, STREAM_BUDGET_MS, SWIM_BUOYANCY, SWIM_DIVE_SPEED, SWIM_PITCH_DEADZONE, SWIM_VERTICAL_SPEED, TOUCH_LOOK_SPEED, UNDERWATER_FOG_COLOR, UNDERWATER_FOG_DENSITY, WATER_EXIT_SPEED, WATER_FLOW_SPEED, fogDensityForRadius, getFullscreenElement, getFullscreenHelp, isRunningAsHomeScreenApp } from '../config';
 import { BlockPlacementAnimator } from '../effects/BlockPlacementAnimator';
 import { FishSystem } from '../creatures/FishSystem';
 import { GroundPetalSystem } from '../effects/GroundPetalSystem';
@@ -18,6 +18,8 @@ import { WindSystem } from '../world/WindSystem';
 // 9. MAIN ENGINE ORCHESTRATOR
 // =========================================================================
 export class CherrySanctuary {
+  declare viewportWidth: number;
+  declare viewportHeight: number;
   declare _camOffset: any;
   declare _forward: any;
   declare _lookTarget: any;
@@ -254,7 +256,7 @@ export class CherrySanctuary {
     this.renderScale = Math.min(window.devicePixelRatio, QUALITY.maxPixelRatio);
     this.lowFpsReadings = 0;
     this.renderer.setPixelRatio(this.renderScale);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.syncViewportSize();
     this.renderer.shadowMap.enabled = QUALITY.shadows;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.viewport.appendChild(this.renderer.domElement);
@@ -295,6 +297,19 @@ export class CherrySanctuary {
     const difference = Math.atan2(Math.sin(yaw - this.targetYaw), Math.cos(yaw - this.targetYaw));
     this.targetYaw += difference;
     return this.targetYaw;
+  }
+
+  // The canvas is stretched to its box by CSS, so it always covers the screen. This only keeps
+  // the drawing resolution and camera shape matched to that box.
+  syncViewportSize() {
+    const width = this.viewport.clientWidth || window.innerWidth;
+    const height = this.viewport.clientHeight || window.innerHeight;
+    if (width === this.viewportWidth && height === this.viewportHeight) return;
+    this.viewportWidth = width;
+    this.viewportHeight = height;
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height, false);
   }
 
   findSpawnPosition() {
@@ -1040,21 +1055,28 @@ export class CherrySanctuary {
 
     this.setupMobileControls();
 
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+    // Phones do not always fire "resize" when browser bars hide or the screen rotates,
+    // so the size of the box itself is watched as well.
+    const onViewportChange = () => this.syncViewportSize();
+    ['resize', 'orientationchange'].forEach(type => window.addEventListener(type, onViewportChange));
+    ['fullscreenchange', 'webkitfullscreenchange'].forEach(type => document.addEventListener(type, onViewportChange));
+    if (window.ResizeObserver) new ResizeObserver(onViewportChange).observe(this.viewport);
   }
 
   // Must be called directly from a tap or click: browsers refuse fullscreen otherwise.
-  enterFullscreen() {
+  // explainProblems is for when the player pressed the button and expects something to happen.
+  enterFullscreen(explainProblems = false) {
     const root = document.documentElement;
     const request = root.requestFullscreen || root.webkitRequestFullscreen;
-    if (!request) return false;
+    if (!request) {
+      if (explainProblems) this.showToast(getFullscreenHelp(), FULLSCREEN_HINT_MS);
+      return;
+    }
     // A refusal is harmless: the game simply keeps running with the browser bars visible
-    Promise.resolve(request.call(root)).catch(error => console.warn('Fullscreen refused:', error));
-    return true;
+    Promise.resolve(request.call(root)).catch(error => {
+      console.warn('Fullscreen refused:', error);
+      if (explainProblems) this.showToast(FULLSCREEN_REFUSED_MESSAGE, FULLSCREEN_HINT_MS);
+    });
   }
 
   toggleFullscreen() {
@@ -1063,9 +1085,7 @@ export class CherrySanctuary {
       Promise.resolve(exit.call(document)).catch(error => console.warn('Fullscreen exit failed:', error));
       return;
     }
-    if (!this.enterFullscreen()) {
-      this.showToast('iPhone: bấm nút Chia sẻ rồi chọn "Thêm vào MH chính", mở từ đó sẽ toàn màn hình', FULLSCREEN_HINT_MS);
-    }
+    this.enterFullscreen(true);
   }
 
   requestPointerLock() {

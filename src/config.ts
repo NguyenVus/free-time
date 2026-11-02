@@ -53,6 +53,12 @@ export const FLOWER_STEM_WIDTH = 0.06;
 export const BLOCK_REACH = 6.5;
 export const OUT_OF_REACH_MESSAGE = 'Khối ở quá xa, hãy nhìn vào khối ở gần hơn';
 export const FULLSCREEN_HINT_MS = 6000;
+export const FULLSCREEN_REFUSED_MESSAGE = 'Trình duyệt chưa cho toàn màn hình. Hãy thử mở web bằng Chrome rồi bấm lại';
+// No fullscreen API: iPhones never have it, and on Android it usually means a browser inside an
+// app such as Zalo or Facebook.
+export const getFullscreenHelp = () => (/iPhone|iPod/.test(window.navigator.userAgent)
+  ? 'iPhone không hỗ trợ nút này. Hãy bấm Chia sẻ, chọn "Thêm vào MH chính", rồi mở game từ đó'
+  : 'Trình duyệt này không hỗ trợ toàn màn hình. Hãy mở web bằng Chrome');
 export const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
 export const isRunningAsHomeScreenApp = () =>
   window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
