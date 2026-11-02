@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <!-- iPhone has no fullscreen API: added to the Home Screen, the page opens without browser bars -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Vườn Anh Đào" />
   <title>Vườn Hoa Anh Đào • 3D Voxel Sanctuary</title>
   <!-- Vercel Web Analytics -->
   <script>
@@ -72,6 +77,18 @@
       mix-blend-mode: screen;
       opacity: 0.35;
       transition: opacity 2.0s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #underwater-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      display: none;
+      background: rgba(16, 104, 178, 0.38);
+    }
+    body.underwater #underwater-overlay {
+      display: block;
     }
 
     /* Crosshair */
@@ -376,6 +393,24 @@
       color: #ffd166;
       min-width: 24px;
       text-align: center;
+    }
+    .player-name {
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--glass-border);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-family: inherit;
+      font-size: 16px; /* smaller text makes iOS zoom the page on focus */
+      text-align: center;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .player-name:focus {
+      border-color: var(--soft-pink);
     }
     .btn-enter {
       width: 100%;
@@ -841,8 +876,23 @@
       }
     }
 
+    /* Desktop keeps its fullscreen button in the menu */
+    #btn-fullscreen-hud {
+      display: none;
+    }
+
     /* Touch devices: touch controls, and no full-screen effects composited over the 3D canvas */
     @media (pointer: coarse) {
+      #btn-fullscreen-hud {
+        display: flex;
+        order: -1;
+      }
+      /* A touch leaves the hover style stuck until the next tap elsewhere */
+      .hud-btn:hover {
+        background: var(--glass-bg);
+        border-color: var(--glass-border);
+        transform: none;
+      }
       #mobile-controls {
         display: block;
       }
@@ -906,6 +956,7 @@
   <!-- 3D Canvas Viewport -->
   <div id="viewport"></div>
   <div id="bloom-overlay"></div>
+  <div id="underwater-overlay"></div>
 
   <!-- Crosshair -->
   <div id="crosshair"></div>
@@ -916,12 +967,14 @@
       <h1>🌸 <span>VƯỜN ANH ĐÀO</span> HD VOXEL</h1>
     </div>
     <div class="hud-btn-group">
+      <button class="hud-btn" id="btn-online" title="Người chơi trong vườn">👥 Một mình</button>
       <button class="hud-btn" id="btn-audio" title="Bật/Tắt Âm Thanh">🔊 Nhạc: BẬT</button>
       <button class="hud-btn" id="btn-tour" title="Chuyến Tham Quan Tự Động">🎥 Tham Quan</button>
       <button class="hud-btn" id="btn-cam" title="Đổi Góc Nhìn 1st/3rd Person">👤 Góc Nhìn</button>
       <button class="hud-btn" id="btn-fly" title="Bật/Tắt Bay Tự Do">🕊️ Bay: TẮT</button>
       <button class="hud-btn" id="btn-time" title="Chuyển Ngày/Hoàng Hôn/Đêm">☀️ Ban Ngày</button>
       <button class="hud-btn" id="btn-menu" title="Mở Cài Đặt (ESC)">⚙️ Menu</button>
+      <button class="hud-btn" id="btn-fullscreen-hud" title="Toàn màn hình">🔲 Toàn Màn Hình</button>
     </div>
   </div>
 
@@ -985,18 +1038,22 @@
         <div class="ctrl-item"><span class="ctrl-key">Vuốt</span> Xoay góc nhìn</div>
         <div class="ctrl-item"><span class="ctrl-key">Nút</span> Nhảy, đào và đặt khối</div>
         <div class="ctrl-item"><span class="ctrl-key">Thanh</span> Chạm để chọn khối</div>
+        <div class="ctrl-item"><span class="ctrl-key">Lặn</span> Nhìn xuống rồi đẩy joystick</div>
       </div>
 
       <div class="controls-grid controls-desktop">
         <div class="ctrl-item"><span class="ctrl-key">WASD</span> Di chuyển mượt (Gia tốc)</div>
         <div class="ctrl-item"><span class="ctrl-key">Chuột</span> Xoay góc nhìn êm dịu</div>
-        <div class="ctrl-item"><span class="ctrl-key">Space</span> Nhảy đường cong / Bơi</div>
-        <div class="ctrl-item"><span class="ctrl-key">Shift</span> Chạy nhanh (Tăng FOV)</div>
+        <div class="ctrl-item"><span class="ctrl-key">Space</span> Nhảy / Bơi lên</div>
+        <div class="ctrl-item"><span class="ctrl-key">Shift</span> Chạy nhanh / Lặn xuống</div>
         <div class="ctrl-item"><span class="ctrl-key">Chuột Trái / Q</span> Đào khối (Hiệu ứng vỡ)</div>
         <div class="ctrl-item"><span class="ctrl-key">Chuột Phải / E</span> Đặt khối (Nảy Pop)</div>
         <div class="ctrl-item"><span class="ctrl-key">1 - 9</span> Chọn khối trong túi</div>
         <div class="ctrl-item"><span class="ctrl-key">F / C</span> Chế độ bay / Tham quan</div>
       </div>
+
+      <input class="player-name" id="player-name" type="text" maxlength="16"
+        placeholder="Tên của bạn (để người khác nhận ra)" autocomplete="off" />
 
       <button class="btn-enter" id="btn-enter">
         🌸 BƯỚC VÀO VƯỜN HOA
@@ -1045,7 +1102,7 @@
       <div class="pause-actions">
         <button class="btn-action primary" id="btn-resume">▶ Tiếp Tục Khám Phá</button>
         <button class="btn-action" id="btn-reset-world">🔄 Đặt Lại Thế Giới Gốc</button>
-        <button class="btn-action" id="btn-fullscreen">⛶ Toàn Màn Hình</button>
+        <button class="btn-action" id="btn-fullscreen">🔲 Toàn Màn Hình</button>
       </div>
     </div>
   </div>
@@ -1629,6 +1686,12 @@
     const RIVER_BRIDGE_LAKE_CLEARANCE = 26; // no bridges where the river runs through the lake
     const WATER_FLOW_SPEED = 0.05;
     const WATER_EXIT_SPEED = 7.5;
+    const SWIM_BUOYANCY = 0.4;
+    const SWIM_DIVE_SPEED = 2.8;
+    const SWIM_VERTICAL_SPEED = 3.2;
+    const SWIM_PITCH_DEADZONE = 0.15;
+    const UNDERWATER_FOG_DENSITY = 0.09;
+    const UNDERWATER_FOG_COLOR = 0x0d5f9e;
 
     // Thick enough that the edge of the loaded world stays hidden at any view distance
     const fogDensityForRadius = (radiusChunks) => 0.85 / (radiusChunks * 16);
@@ -1644,6 +1707,10 @@
     const FLOWER_STEM_WIDTH = 0.06;
     const BLOCK_REACH = 6.5;
     const OUT_OF_REACH_MESSAGE = 'Khối ở quá xa, hãy nhìn vào khối ở gần hơn';
+    const FULLSCREEN_HINT_MS = 6000;
+    const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+    const isRunningAsHomeScreenApp = () =>
+      window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
     const TOUCH_LOOK_SPEED = 0.005;
     const IS_TOUCH_DEVICE = window.matchMedia('(pointer: coarse)').matches;
 
@@ -1654,6 +1721,7 @@
           shadows: false,
           lanternLights: 2,
           flyingPetals: 500,
+          fish: 25,
           stars: 800,
           groundPetals: 400,
           flowerDensity: 0.09,
@@ -1665,6 +1733,7 @@
           shadows: true,
           lanternLights: 4,
           flyingPetals: 1400,
+          fish: 60,
           stars: 1600,
           groundPetals: 900,
           flowerDensity: 0.2, // share of grass columns with a flower
@@ -1808,7 +1877,8 @@
             transparent: true,
             opacity: 0.68,
             roughness: 0.1,
-            metalness: 0.15
+            metalness: 0.15,
+            side: THREE.DoubleSide // the surface is also visible from underneath
           }),
           [BLOCK_DEFS.TORII_RED]: new THREE.MeshStandardMaterial({ map: this.textures['torii_red'].texture, roughness: 0.7, vertexColors: true }),
           [BLOCK_DEFS.ROOF_SLATE]: new THREE.MeshStandardMaterial({ map: this.textures['roof_slate'].texture, roughness: 0.8, vertexColors: true }),
@@ -3094,6 +3164,203 @@
     // =========================================================================
     // 6. INSTANCED FALLING PETALS (GPU Instancing & Smooth Sine Motion)
     // =========================================================================
+    const FISH_SCHOOL_SIZE = 5;
+    const FISH_RANGE = 44; // schools live within this distance of the player, along the river
+    const FISH_FLEE_DISTANCE = 4.5;
+    const FISH_FLEE_SECONDS = 1.5;
+    const FISH_FLEE_SPEED_FACTOR = 3.5;
+    const FISH_MAX_LANE = 0.7; // share of the river's half width; the edges are too shallow
+    const FISH_SURFACE_Y = WATER_LEVEL + 0.6;
+    const FISH_ABOVE_BED = 1.25;
+    const FISH_BED_REFRESH_FRAMES = 8;
+    const FISH_COLORS = [0xff7a2a, 0xf4f0e6, 0xd9342b, 0xf5c542, 0x9fb4c7, 0xff9d5c];
+
+    // Schools of koi that swim along the river. Each school is a position along the river plus a
+    // lane across it, so the fish follow every bend and never need collision checks against banks.
+    class FishSystem {
+      constructor(scene, world, count = QUALITY.fish) {
+        this.world = world;
+        this.frame = 0;
+        this.time = { value: 0 };
+        this.dummy = new THREE.Object3D();
+
+        this.mesh = new THREE.InstancedMesh(this.createGeometry(), this.createMaterial(), count);
+        this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.mesh.frustumCulled = false; // see PetalSystem: r128 culls this at the world origin
+        scene.add(this.mesh);
+
+        this.schools = [];
+        const tint = new THREE.Color();
+        for (let start = 0; start < count; start += FISH_SCHOOL_SIZE) {
+          const school = { active: false, z: 0, lane: 0, depth: 0, dir: 1, speed: 1, drift: 0, fleeing: 0, members: [] };
+          const main = FISH_COLORS[Math.floor(Math.random() * FISH_COLORS.length)];
+          const size = Math.min(FISH_SCHOOL_SIZE, count - start);
+          for (let m = 0; m < size; m++) {
+            const index = start + m;
+            // Mostly one colour per school, with the odd fish that stands out
+            const color = Math.random() < 0.7 ? main : FISH_COLORS[Math.floor(Math.random() * FISH_COLORS.length)];
+            this.mesh.setColorAt(index, tint.setHex(color));
+            school.members.push({
+              index,
+              offsetZ: (Math.random() - 0.5) * 3.2,
+              offsetLane: (Math.random() - 0.5) * 0.3,
+              offsetDepth: (Math.random() - 0.5) * 0.3,
+              scale: 0.75 + Math.random() * 0.45,
+              position: new THREE.Vector3(),
+              yaw: 0,
+              bed: 0
+            });
+          }
+          this.schools.push(school);
+        }
+        this.mesh.instanceColor.needsUpdate = true;
+      }
+
+      // A blocky koi pointing along +z. Colour is multiplied by the instance tint: white keeps it,
+      // above 1 gives the paler belly, and black makes the eyes.
+      createGeometry() {
+        const positions = [];
+        const normals = [];
+        const colors = [];
+        const pushFace = (corners, normal, shade) => {
+          for (const i of [0, 1, 2, 0, 2, 3]) {
+            positions.push(...corners[i]);
+            normals.push(...normal);
+            colors.push(shade, shade, shade);
+          }
+        };
+        const pushBox = (cx, cy, cz, sx, sy, sz, shade, bellyShade = shade) => {
+          const x0 = cx - sx / 2, x1 = cx + sx / 2;
+          const y0 = cy - sy / 2, y1 = cy + sy / 2;
+          const z0 = cz - sz / 2, z1 = cz + sz / 2;
+          pushFace([[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]], [1, 0, 0], shade);
+          pushFace([[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], [-1, 0, 0], shade);
+          pushFace([[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0]], [0, 1, 0], shade);
+          pushFace([[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]], [0, -1, 0], bellyShade);
+          pushFace([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], [0, 0, 1], shade);
+          pushFace([[x1, y0, z0], [x0, y0, z0], [x0, y1, z0], [x1, y1, z0]], [0, 0, -1], shade);
+        };
+
+        pushBox(0, 0, 0.12, 0.2, 0.22, 0.34, 1, 1.25); // head and chest
+        pushBox(0, 0, -0.16, 0.14, 0.17, 0.26, 1, 1.25); // rear body
+        pushBox(0, 0, -0.34, 0.03, 0.26, 0.14, 0.85); // tail fin
+        pushBox(0, 0.14, -0.02, 0.03, 0.07, 0.24, 0.85); // back fin
+        pushBox(0.102, 0.04, 0.2, 0.012, 0.05, 0.05, 0); // right eye
+        pushBox(-0.102, 0.04, 0.2, 0.012, 0.05, 0.05, 0); // left eye
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+        geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        return geometry;
+      }
+
+      createMaterial() {
+        const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+        material.onBeforeCompile = (shader) => {
+          shader.uniforms.uFishTime = this.time;
+          shader.vertexShader = 'uniform float uFishTime;\n' + shader.vertexShader;
+          // The tail sways more than the head. Each fish's position gives it its own rhythm.
+          shader.vertexShader = shader.vertexShader.replace(
+            '#include <begin_vertex>',
+            `
+            #include <begin_vertex>
+            float tailAmount = clamp(0.1 - position.z, 0.0, 0.5);
+            transformed.x += sin(uFishTime * 11.0 + instanceMatrix[3][0] + instanceMatrix[3][2]) * tailAmount * 0.32;
+            `
+          );
+        };
+        return material;
+      }
+
+      respawn(school, center, anywhere) {
+        const side = Math.random() < 0.5 ? -1 : 1;
+        school.z = anywhere
+          ? center.z + (Math.random() * 2 - 1) * FISH_RANGE
+          : center.z + side * FISH_RANGE * (0.75 + Math.random() * 0.25); // out in the haze, not in view
+        school.lane = (Math.random() * 2 - 1) * FISH_MAX_LANE * 0.7;
+        school.depth = 0.15 + Math.random() * 0.7;
+        school.dir = Math.random() < 0.5 ? -1 : 1;
+        school.speed = 0.9 + Math.random() * 0.9;
+        school.drift = Math.random() * Math.PI * 2;
+        school.fleeing = 0;
+        school.active = true;
+        school.members.forEach(m => { m.placed = false; });
+      }
+
+      update(dt, center) {
+        this.time.value += dt;
+        this.frame++;
+        const world = this.world;
+        let anyVisible = false;
+
+        for (const school of this.schools) {
+          if (!school.active) this.respawn(school, center, true);
+          else if (Math.abs(school.z - center.z) > FISH_RANGE) this.respawn(school, center, false);
+
+          // Far from the river there is nothing to see, so skip the work
+          const nearRiver = Math.abs(world.getRiverCenter(school.z) - center.x) < FISH_RANGE;
+          if (!nearRiver) {
+            for (const m of school.members) {
+              this.dummy.scale.setScalar(0);
+              this.dummy.updateMatrix();
+              this.mesh.setMatrixAt(m.index, this.dummy.matrix);
+              m.placed = false;
+            }
+            this.dummy.scale.setScalar(1);
+            continue;
+          }
+          anyVisible = true;
+
+          const riverX = world.getRiverCenter(school.z) + school.lane * world.getRiverHalfWidth(school.z);
+          if (Math.hypot(riverX - center.x, school.z - center.z) < FISH_FLEE_DISTANCE && school.fleeing <= 0) {
+            school.fleeing = FISH_FLEE_SECONDS;
+            school.dir = school.z >= center.z ? 1 : -1;
+          }
+          school.fleeing = Math.max(0, school.fleeing - dt);
+
+          const speed = school.speed * (school.fleeing > 0 ? FISH_FLEE_SPEED_FACTOR : 1);
+          school.z += school.dir * speed * dt;
+          school.drift += dt * 0.5;
+          school.lane = Math.max(-FISH_MAX_LANE, Math.min(FISH_MAX_LANE, school.lane + Math.sin(school.drift) * dt * 0.06));
+
+          for (const m of school.members) {
+            const z = school.z + m.offsetZ;
+            const lane = Math.max(-FISH_MAX_LANE, Math.min(FISH_MAX_LANE, school.lane + m.offsetLane));
+            const x = world.getRiverCenter(z) + lane * world.getRiverHalfWidth(z);
+
+            if (!m.placed || (this.frame + m.index) % FISH_BED_REFRESH_FRAMES === 0) {
+              m.bed = world.getTerrainHeight(Math.floor(x), Math.floor(z)) + 1;
+            }
+            const lowest = m.bed + FISH_ABOVE_BED - 1;
+            const depth = Math.max(0, Math.min(1, school.depth + m.offsetDepth));
+            const y = lowest + (FISH_SURFACE_Y - lowest) * depth;
+
+            if (m.placed) {
+              const dx = x - m.position.x;
+              const dz = z - m.position.z;
+              if (dx * dx + dz * dz > 1e-6) m.yaw = Math.atan2(dx, dz);
+              // Easing makes depth changes gentle, but the fish must never sink into a rising bed
+              m.position.set(x, Math.max(lowest, THREE.MathUtils.lerp(m.position.y, y, Math.min(1, dt * 2))), z);
+            } else {
+              m.position.set(x, y, z);
+              m.yaw = school.dir > 0 ? 0 : Math.PI;
+              m.placed = true;
+            }
+
+            this.dummy.position.copy(m.position);
+            this.dummy.rotation.set(0, m.yaw, 0);
+            this.dummy.scale.setScalar(m.scale);
+            this.dummy.updateMatrix();
+            this.mesh.setMatrixAt(m.index, this.dummy.matrix);
+          }
+        }
+
+        this.mesh.visible = anyVisible;
+        this.mesh.instanceMatrix.needsUpdate = true;
+      }
+    }
+
     const SKY_BODY_DISTANCE = 320; // inside the camera's far plane, beyond all loaded terrain
     const SKY_BODY_MODES = {
       day: { sun: 1, moon: 0, stars: 0, sunColor: 0xfffbea, sunSize: 170 },
@@ -3704,7 +3971,7 @@
     // 8. 3RD-PERSON VOXEL CHARACTER (Pink Kimono with Damped Limbs)
     // =========================================================================
     class VoxelCharacter {
-      constructor(scene) {
+      constructor(scene, kimonoColor = 0xf472b6) {
         this.group = new THREE.Group();
         this.visible = false;
         this.walkCycle = 0;
@@ -3712,7 +3979,7 @@
 
         const skinMat = new THREE.MeshStandardMaterial({ color: 0xffd1b3, roughness: 0.6 });
         const hairMat = new THREE.MeshStandardMaterial({ color: 0x211717, roughness: 0.8 });
-        const kimonoMat = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.7 });
+        const kimonoMat = new THREE.MeshStandardMaterial({ color: kimonoColor, roughness: 0.7 });
         const obiMat = new THREE.MeshStandardMaterial({ color: 0x9333ea, roughness: 0.7 });
         const pantsMat = new THREE.MeshStandardMaterial({ color: 0x3b1d28, roughness: 0.8 });
 
@@ -3769,6 +4036,231 @@
         this.legR.rotation.x = -swing;
         this.armL.rotation.x = -swing;
         this.armR.rotation.x = swing;
+      }
+    }
+
+    // =========================================================================
+    // MULTIPLAYER: players in the same room see each other (peer-to-peer WebRTC)
+    // =========================================================================
+    // Pinned, and loaded only after the player enters: if it cannot load, the game stays single-player.
+    const MULTIPLAYER_LIBRARY_URL = 'https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm';
+    const MULTIPLAYER_APP_ID = 'cherry-blossom-garden-nguyenvus';
+    const MULTIPLAYER_DEFAULT_ROOM = 'vuon-chung';
+    const MULTIPLAYER_MAX_PEERS = 8; // each peer is a direct connection, so this must stay small
+    const MULTIPLAYER_POSE_INTERVAL_MS = 100;
+    const MULTIPLAYER_HEARTBEAT_MS = 1000;
+    const MULTIPLAYER_PEER_TIMEOUT_MS = 15000; // a phone with its screen off stops sending
+    const MULTIPLAYER_SNAP_DISTANCE = 20;
+    const PLAYER_NAME_STORAGE_KEY = 'cherry_player_name';
+    const PLAYER_NAME_MAX_LENGTH = 16;
+    const AVATAR_COLORS = [0x38bdf8, 0xf59e0b, 0x34d399, 0xa78bfa, 0xef4444, 0xfacc15, 0x2dd4bf, 0xfb7185];
+
+    // Everything received comes from another person's browser, so it is checked before use.
+    const cleanPlayerName = (value) => {
+      if (typeof value !== 'string') return '';
+      return value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, PLAYER_NAME_MAX_LENGTH);
+    };
+    const isValidPose = (pose) =>
+      Array.isArray(pose) && pose.length === 5 && pose.every(Number.isFinite) &&
+      Math.abs(pose[0]) < 1e6 && Math.abs(pose[2]) < 1e6 && pose[1] > -64 && pose[1] < 256;
+
+    class MultiplayerClient {
+      constructor(game) {
+        this.game = game;
+        this.peers = new Map();
+        this.room = null;
+        this.status = 'off';
+        this.name = '';
+        this.lastPoseSent = 0;
+        this.lastPose = null;
+        this.statusEl = document.getElementById('btn-online');
+      }
+
+      getRoomId() {
+        const requested = new URLSearchParams(window.location.search).get('phong') || '';
+        return requested.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || MULTIPLAYER_DEFAULT_ROOM;
+      }
+
+      async connect(name) {
+        if (this.room || this.status === 'connecting') return;
+        this.name = name;
+        this.setStatus('connecting');
+        try {
+          const { joinRoom } = await import(MULTIPLAYER_LIBRARY_URL);
+          this.room = joinRoom({ appId: MULTIPLAYER_APP_ID }, this.getRoomId());
+
+          this.nameAction = this.room.makeAction('name');
+          this.poseAction = this.room.makeAction('pose');
+
+          this.nameAction.onMessage = (value, { peerId }) => this.handleName(peerId, value);
+          this.poseAction.onMessage = (value, { peerId }) => this.handlePose(peerId, value);
+          this.room.onPeerJoin = (peerId) => {
+            this.nameAction.send(this.name, { target: peerId });
+            if (this.lastPose) this.poseAction.send(this.lastPose, { target: peerId });
+            this.getOrAddPeer(peerId);
+            this.setStatus('online');
+          };
+          this.room.onPeerLeave = (peerId) => this.removePeer(peerId, true);
+          this.setStatus('online');
+        } catch (error) {
+          console.warn('Multiplayer unavailable:', error);
+          this.setStatus('failed');
+        }
+      }
+
+      setStatus(status) {
+        this.status = status;
+        if (!this.statusEl) return;
+        const labels = {
+          off: '👥 Một mình',
+          connecting: '👥 Đang kết nối...',
+          failed: '👥 Không kết nối được',
+          online: `👥 ${this.peers.size + 1} người`
+        };
+        this.statusEl.textContent = labels[status];
+        this.statusEl.classList.toggle('active', status === 'online' && this.peers.size > 0);
+      }
+
+      describePlayers() {
+        if (this.status === 'failed') return 'Không kết nối được, bạn vẫn chơi một mình bình thường';
+        if (this.status !== 'online') return 'Đang tìm người chơi khác...';
+        const names = [...this.peers.values()].map(peer => peer.name);
+        return names.length ? `Đang ở đây: ${names.join(', ')}` : 'Chưa có ai khác, mở web trên máy khác để gặp nhau';
+      }
+
+      getOrAddPeer(peerId) {
+        if (this.peers.has(peerId)) return this.peers.get(peerId);
+        if (this.peers.size >= MULTIPLAYER_MAX_PEERS) return null;
+
+        let hash = 0;
+        for (let i = 0; i < peerId.length; i++) hash = (hash * 31 + peerId.charCodeAt(i)) | 0;
+        const avatar = new VoxelCharacter(this.game.scene, AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]);
+        avatar.visible = false; // until the first position arrives
+
+        const peer = {
+          avatar,
+          name: 'Khách',
+          nameTag: null,
+          position: new THREE.Vector3(),
+          target: new THREE.Vector3(),
+          yaw: 0,
+          targetYaw: 0,
+          moving: false,
+          placed: false,
+          announced: false,
+          lastHeard: performance.now()
+        };
+        this.peers.set(peerId, peer);
+        this.setNameTag(peer);
+        this.setStatus('online');
+        return peer;
+      }
+
+      handleName(peerId, value) {
+        const peer = this.getOrAddPeer(peerId);
+        const name = cleanPlayerName(value);
+        if (!peer || !name) return;
+        peer.name = name;
+        peer.lastHeard = performance.now();
+        this.setNameTag(peer);
+        if (!peer.announced) {
+          peer.announced = true;
+          this.game.showToast(`${name} đã vào vườn 🌸`);
+        }
+      }
+
+      handlePose(peerId, pose) {
+        if (!isValidPose(pose)) return;
+        const peer = this.getOrAddPeer(peerId);
+        if (!peer) return;
+        peer.target.set(pose[0], pose[1], pose[2]);
+        peer.targetYaw = pose[3];
+        peer.moving = pose[4] === 1;
+        peer.lastHeard = performance.now();
+        if (!peer.placed || peer.position.distanceTo(peer.target) > MULTIPLAYER_SNAP_DISTANCE) {
+          peer.position.copy(peer.target);
+          peer.yaw = peer.targetYaw;
+          peer.placed = true;
+          peer.avatar.visible = true;
+        }
+      }
+
+      setNameTag(peer) {
+        if (peer.nameTag) {
+          peer.avatar.group.remove(peer.nameTag);
+          peer.nameTag.material.map.dispose();
+          peer.nameTag.material.dispose();
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = 'rgba(20, 10, 24, 0.75)';
+        ctx.fillRect(0, 0, 256, 64);
+        ctx.font = '700 30px "Plus Jakarta Sans", system-ui, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(peer.name, 128, 33, 240);
+
+        peer.nameTag = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: new THREE.CanvasTexture(canvas),
+          transparent: true,
+          depthWrite: false,
+          fog: false
+        }));
+        peer.nameTag.scale.set(1.6, 0.4, 1);
+        peer.nameTag.position.y = 2.05;
+        peer.avatar.group.add(peer.nameTag);
+      }
+
+      removePeer(peerId, announce) {
+        const peer = this.peers.get(peerId);
+        if (!peer) return;
+        this.game.scene.remove(peer.avatar.group);
+        peer.avatar.group.traverse(object => {
+          if (object.geometry) object.geometry.dispose();
+          if (object.material) {
+            if (object.material.map) object.material.map.dispose();
+            object.material.dispose();
+          }
+        });
+        this.peers.delete(peerId);
+        this.setStatus(this.status);
+        if (announce) this.game.showToast(`${peer.name} đã rời vườn`);
+      }
+
+      update(dt, player, isMoving) {
+        if (!this.room) return;
+        const now = performance.now();
+
+        if (now - this.lastPoseSent >= MULTIPLAYER_POSE_INTERVAL_MS && this.peers.size > 0) {
+          const pose = [
+            Math.round(player.pos.x * 100) / 100,
+            Math.round(player.pos.y * 100) / 100,
+            Math.round(player.pos.z * 100) / 100,
+            Math.round(player.yaw * 100) / 100,
+            isMoving ? 1 : 0
+          ];
+          const changed = !this.lastPose || pose.some((value, i) => value !== this.lastPose[i]);
+          if (changed || now - this.lastPoseSent >= MULTIPLAYER_HEARTBEAT_MS) {
+            this.poseAction.send(pose);
+            this.lastPose = pose;
+            this.lastPoseSent = now;
+          }
+        }
+
+        const rate = 1.0 - Math.exp(-12 * dt);
+        for (const [peerId, peer] of this.peers) {
+          if (now - peer.lastHeard > MULTIPLAYER_PEER_TIMEOUT_MS) {
+            this.removePeer(peerId, false);
+            continue;
+          }
+          peer.position.lerp(peer.target, rate);
+          const turn = Math.atan2(Math.sin(peer.targetYaw - peer.yaw), Math.cos(peer.targetYaw - peer.yaw));
+          peer.yaw += turn * rate;
+          peer.avatar.update(peer.position, peer.yaw, peer.moving, dt);
+        }
       }
     }
 
@@ -3882,6 +4374,7 @@
         this.initHotbarUI();
         this.initEventListeners();
         this.initHaikuCycler();
+        this.multiplayer = new MultiplayerClient(this);
 
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
@@ -4034,6 +4527,7 @@
 
       initPetalsAndLighting() {
         this.petals = new PetalSystem(this.scene);
+        this.fish = new FishSystem(this.scene, this.world);
         this.skyBodies = new SkyBodies(this.scene);
 
         this.sunLight = new THREE.DirectionalLight(0xfff3db, 1.9);
@@ -4292,8 +4786,28 @@
       }
 
       initEventListeners() {
+        const nameInput = document.getElementById('player-name');
+        try {
+          nameInput.value = localStorage.getItem(PLAYER_NAME_STORAGE_KEY) || '';
+        } catch (e) {
+          // Private browsing can block storage; the player just types a name again
+        }
+
+        document.getElementById('btn-online').addEventListener('click', () => {
+          this.showToast(this.multiplayer.describePlayers());
+        });
+
         document.getElementById('btn-enter').addEventListener('click', () => {
           document.getElementById('welcome-screen').classList.add('hidden');
+          nameInput.blur();
+          const name = cleanPlayerName(nameInput.value) || `Khách ${1000 + Math.floor(Math.random() * 9000)}`;
+          try {
+            localStorage.setItem(PLAYER_NAME_STORAGE_KEY, name);
+          } catch (e) {
+            // Not saved, which only means typing it again next time
+          }
+          if (IS_TOUCH_DEVICE && !isRunningAsHomeScreenApp()) this.enterFullscreen();
+          this.multiplayer.connect(name);
           this.audio.init();
           this.requestPointerLock();
         });
@@ -4399,13 +4913,22 @@
           }
         });
 
-        document.getElementById('btn-fullscreen').addEventListener('click', () => {
-          if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-          else document.exitFullscreen();
-        });
-        // iPhone Safari has no fullscreen API
-        if (!document.documentElement.requestFullscreen) {
-          document.getElementById('btn-fullscreen').style.display = 'none';
+        const fullscreenButtons = [
+          document.getElementById('btn-fullscreen'),
+          document.getElementById('btn-fullscreen-hud')
+        ];
+        fullscreenButtons.forEach(btn => btn.addEventListener('click', () => this.toggleFullscreen()));
+
+        const syncFullscreenLabels = () => {
+          const label = getFullscreenElement() ? '❌ Thoát Toàn Màn Hình' : '🔲 Toàn Màn Hình';
+          fullscreenButtons.forEach(btn => { btn.textContent = label; });
+        };
+        document.addEventListener('fullscreenchange', syncFullscreenLabels);
+        document.addEventListener('webkitfullscreenchange', syncFullscreenLabels);
+
+        // Already without browser bars when opened from the iPhone Home Screen
+        if (isRunningAsHomeScreenApp()) {
+          fullscreenButtons.forEach(btn => { btn.style.display = 'none'; });
         }
 
         document.getElementById('set-time').addEventListener('change', (e) => {
@@ -4424,6 +4947,9 @@
         });
 
         window.addEventListener('keydown', (e) => {
+          // Typing a name must not walk, open the tour or switch camera
+          if (e.target instanceof HTMLInputElement && e.target.type === 'text') return;
+
           this.inputKeys[e.code] = true;
 
           if (this.isCinematicTour) {
@@ -4614,6 +5140,27 @@
         });
       }
 
+      // Must be called directly from a tap or click: browsers refuse fullscreen otherwise.
+      enterFullscreen() {
+        const root = document.documentElement;
+        const request = root.requestFullscreen || root.webkitRequestFullscreen;
+        if (!request) return false;
+        // A refusal is harmless: the game simply keeps running with the browser bars visible
+        Promise.resolve(request.call(root)).catch(error => console.warn('Fullscreen refused:', error));
+        return true;
+      }
+
+      toggleFullscreen() {
+        if (getFullscreenElement()) {
+          const exit = document.exitFullscreen || document.webkitExitFullscreen;
+          Promise.resolve(exit.call(document)).catch(error => console.warn('Fullscreen exit failed:', error));
+          return;
+        }
+        if (!this.enterFullscreen()) {
+          this.showToast('iPhone: bấm nút Chia sẻ rồi chọn "Thêm vào MH chính", mở từ đó sẽ toàn màn hình', FULLSCREEN_HINT_MS);
+        }
+      }
+
       requestPointerLock() {
         if (IS_TOUCH_DEVICE) return;
         this.viewport.requestPointerLock =this.viewport.requestPointerLock || this.viewport.mozRequestPointerLock;
@@ -4627,12 +5174,12 @@
         if (show && document.exitPointerLock) document.exitPointerLock();
       }
 
-      showToast(msg) {
+      showToast(msg, durationMs = 2000) {
         const t = document.getElementById('toast');
         t.textContent = msg;
         t.classList.add('show');
         clearTimeout(this.toastTimer);
-        this.toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+        this.toastTimer = setTimeout(() => t.classList.remove('show'), durationMs);
       }
 
       getTargetBlock(reach = BLOCK_REACH) {
@@ -4914,7 +5461,15 @@
         this.wasGrounded = this.player.isGrounded;
 
         if (this.player.isInWater) {
-          this.player.vel.y = THREE.MathUtils.lerp(this.player.vel.y, 0.4, dt * 4);
+          // Keyboard: hold Shift to dive. Everywhere: swim toward where you look, which is also how
+          // to dive on a phone, where the joystick uses that same key for running.
+          let targetVy = SWIM_BUOYANCY;
+          if (!IS_TOUCH_DEVICE && isRunning) {
+            targetVy = -SWIM_DIVE_SPEED;
+          } else if (this._moveDir.z !== 0 && Math.abs(this.player.pitch) > SWIM_PITCH_DEADZONE) {
+            targetVy = -this._moveDir.z * Math.sin(this.player.pitch) * SWIM_VERTICAL_SPEED;
+          }
+          this.player.vel.y = THREE.MathUtils.lerp(this.player.vel.y, targetVy, Math.min(1, dt * 4));
           if (this.inputKeys['Space']) this.player.vel.y = 3.5;
         } else {
           let gravity = 24.0;
@@ -5617,6 +6172,9 @@
         // 8. Petal Particle Flutter
         this.petals.update(dt, this.isCinematicTour ? this.camera.position : this.player.pos, this.wind);
 
+        this.fish.update(dt, this.isCinematicTour ? this.camera.position : this.player.pos);
+        this.multiplayer.update(dt, this.player, isMoving);
+
         // 9. Highlight Box on Look Target
         const target = this.getTargetBlock();
         if (target && !this.isCinematicTour) {
@@ -5645,8 +6203,17 @@
 
         // After the camera has moved this frame, so the sun and moon do not jitter
         this.skyBodies.update(this.camera, this.sunLight.position, dt);
+        this.updateUnderwaterView();
 
         this.renderer.render(this.scene, this.camera);
+      }
+
+      updateUnderwaterView() {
+        const p = this.camera.position;
+        const isUnderwater = this.world.getBlock(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z)) === BLOCK_DEFS.WATER;
+        if (isUnderwater) this.scene.fog.color.setHex(UNDERWATER_FOG_COLOR); // eases back on surfacing
+        this.scene.fog.density = isUnderwater ? UNDERWATER_FOG_DENSITY : fogDensityForRadius(this.viewRadius);
+        document.body.classList.toggle('underwater', isUnderwater);
       }
 
       // Weak GPUs: lower the render resolution after ~2s of sustained low FPS.
