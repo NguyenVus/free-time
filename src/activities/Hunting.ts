@@ -8,6 +8,7 @@ const ARROW_GRAVITY = 9.8;
 const ARROW_MAX_SECONDS = 4;
 const ARROW_STUCK_SECONDS = 5;
 const SHOOT_COOLDOWN_SECONDS = 0.6;
+export const ARROW_DAMAGE = 4;
 
 interface Arrow {
   mesh: THREE.Mesh;
@@ -16,7 +17,7 @@ interface Arrow {
   flying: boolean;
 }
 
-/** Arrows flying in an arc. They stop at the first block, and can only hit huntable animals. */
+/** Arrows flying in an arc. They stop at the first block or animal. */
 export class Hunting {
   private arrows: Arrow[] = [];
   private cooldown = 0;
@@ -27,7 +28,7 @@ export class Hunting {
     scene: THREE.Scene,
     private world: { getBlock(x: number, y: number, z: number): number; getLoadedChunk(cx: number, cz: number): unknown },
     private animals: AnimalSystem,
-    private onHit: (killed: boolean, hit: ArrowHit) => void
+    private onHit: (killed: boolean, hit: ArrowHit, damage: number) => void
   ) {
     const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.7);
     const material = new THREE.MeshLambertMaterial({ color: 0x7a5a36 });
@@ -72,11 +73,11 @@ export class Hunting {
       arrow.mesh.position.addScaledVector(arrow.velocity, dt);
       arrow.mesh.quaternion.setFromUnitVectors(this.forward, this.previous.clone().sub(arrow.mesh.position).negate().normalize());
 
-      const hit = this.animals.hitTestArrow(this.previous, arrow.mesh.position);
+      const hit = this.animals.hitTest(this.previous, arrow.mesh.position);
       if (hit) {
         arrow.mesh.visible = false;
         arrow.flying = false;
-        this.onHit(this.animals.damage(hit, this.previous), hit);
+        this.onHit(this.animals.damage(hit, this.previous, ARROW_DAMAGE), hit, ARROW_DAMAGE);
         continue;
       }
       if (this.isBlocked(arrow.mesh.position)) {
