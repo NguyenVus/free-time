@@ -28,7 +28,7 @@ export class Hunting {
     scene: THREE.Scene,
     private world: { getBlock(x: number, y: number, z: number): number; getLoadedChunk(cx: number, cz: number): unknown },
     private animals: AnimalSystem,
-    private onHit: (killed: boolean, hit: ArrowHit, damage: number) => void
+    private onHit: (hit: ArrowHit, from: THREE.Vector3, damage: number) => void
   ) {
     const geometry = new THREE.BoxGeometry(0.05, 0.05, 0.7);
     const material = new THREE.MeshLambertMaterial({ color: 0x7a5a36 });
@@ -77,7 +77,7 @@ export class Hunting {
       if (hit) {
         arrow.mesh.visible = false;
         arrow.flying = false;
-        this.onHit(this.animals.damage(hit, this.previous, ARROW_DAMAGE), hit, ARROW_DAMAGE);
+        this.onHit(hit, this.previous, ARROW_DAMAGE);
         continue;
       }
       if (this.isBlocked(arrow.mesh.position)) {

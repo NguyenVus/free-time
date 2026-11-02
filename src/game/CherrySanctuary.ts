@@ -265,7 +265,7 @@ export class CherrySanctuary {
     this.inventoryPanel = new InventoryPanel(this.inventory, this.textures, id => this.putInActiveSlot(id), id => this.holdTool(id), message => this.showToast(message));
     this.scene.add(this.camera); // things it carries, such as the fishing rod, are drawn only if it is in the scene
     this.fishing = new Fishing(this.scene, this.world, (event, item) => this.handleFishingEvent(event, item));
-    this.hunting = new Hunting(this.scene, this.world, this.animals, (killed, hit, damage) => this.handleAnimalHit(killed, hit, damage));
+    this.hunting = new Hunting(this.scene, this.world, this.animals, (hit, from, damage) => this.strikeAnimal(hit, from, damage));
     this.initHotbarUI();
     this.initEventListeners();
     this.initHaikuCycler();
@@ -831,8 +831,20 @@ export class CherrySanctuary {
     const damage = MELEE_DAMAGE_BY_PICKAXE_TIER[this.inventory.pickaxeTier()];
     this.heldItem.startSwing();
     this.audio.playBlockBreak();
-    this.handleAnimalHit(this.animals.damage(hit, this.player.pos, damage), hit, damage);
+    this.strikeAnimal(hit, this.player.pos, damage);
     return true;
+  }
+
+  // The device running the animals decides what a blow does. On any other device it is only a request,
+  // and the result comes back through handleAnimalHit like everyone else's.
+  strikeAnimal(hit: ArrowHit, from: THREE.Vector3, damage: number) {
+    if (this.animals.following) {
+      this.multiplayer.requestAnimalHit(hit, damage);
+      return;
+    }
+    const killed = this.animals.damage(hit, from, damage);
+    this.multiplayer.shareAnimalHit(hit, damage, killed, this.multiplayer.selfId);
+    this.handleAnimalHit(killed, hit, damage);
   }
 
   handleAnimalHit(killed: boolean, hit: ArrowHit, damage: number) {

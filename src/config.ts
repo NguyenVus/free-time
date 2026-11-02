@@ -3,6 +3,8 @@
 // =========================================================================
 export const CHUNK_SIZE = 16;
 export const CHUNK_HEIGHT = 64;
+// Room in every device for the biggest herds, because a phone may be shown a computer's animals
+export const ANIMAL_CAPACITY: Record<string, number> = { boar: 6, deer: 9, sheep: 16, rabbit: 12 };
 // Natural hills keep their old limits, so the world outside the mountain does not change
 export const NATURAL_TERRAIN_MAX = 26;
 export const TREE_MAX_GROUND = 19;

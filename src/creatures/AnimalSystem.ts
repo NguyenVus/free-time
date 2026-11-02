@@ -1,5 +1,5 @@
 import { BLOCK_DEFS } from '../world/blocks';
-import { CHUNK_HEIGHT, CHUNK_SIZE, QUALITY } from '../config';
+import { ANIMAL_CAPACITY, CHUNK_HEIGHT, CHUNK_SIZE, QUALITY } from '../config';
 
 export const ANIMAL_MAX_RANGE = 56; // never beyond the loaded world, so animals cannot generate terrain
 export const ANIMAL_SPAWN_MIN_DISTANCE = 26; // out in the haze rather than appearing in plain view
@@ -11,6 +11,10 @@ export const ANIMAL_MAX_STEP = 1;
 export const ANIMAL_GROUND_CHECK_FRAMES = 15; // the ground can be dug away from under a standing animal
 export const BOAR_MIN_DISTANCE_FROM_START = 130;
 const HIT_FLASH_SECONDS = 0.2;
+const REMOTE_SMOOTHING = 8;
+const REMOTE_FIELDS = 7;
+const REMOTE_SNAP_DISTANCE = 12;
+const REMOTE_FORGET_SECONDS = 1.5; // not in the host's recent messages: it has gone
 const HIT_FLASH_COLOR = 0xff4d4d;
 const ANIMAL_RESPAWN_SECONDS = 25;
 
@@ -86,6 +90,7 @@ export const ANIMAL_SPECIES = {
 // and turn back at water, cliffs, trees and walls. Each player's animals are their own.
 export class AnimalSystem {
   private flashColor = new THREE.Color();
+  following = false;
   declare dummy: any;
   declare frame: any;
   declare herds: any;
@@ -99,7 +104,7 @@ export class AnimalSystem {
     this.herds = [];
 
     for (const [name, species] of Object.entries(ANIMAL_SPECIES)) {
-      const count = counts[name];
+      const count = ANIMAL_CAPACITY[name];
       const mesh = new THREE.InstancedMesh(this.createGeometry(species, count), this.createMaterial(species), count);
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       mesh.frustumCulled = false; // see PetalSystem: r128 culls this at the world origin
@@ -117,7 +122,7 @@ export class AnimalSystem {
       }
       mesh.instanceColor.needsUpdate = true;
       scene.add(mesh);
-      this.herds.push({ species, mesh, animals, moving: mesh.geometry.getAttribute('aMoving') });
+      this.herds.push({ species, mesh, animals, simulated: counts[name], moving: mesh.geometry.getAttribute('aMoving') });
     }
   }
 
@@ -333,16 +338,126 @@ export class AnimalSystem {
     return false;
   }
 
+  // While near a player who hosts the animals, this device shows theirs instead of running its own.
+  setFollowing(following: boolean) {
+    if (following === this.following) return;
+    this.following = following;
+    // Whichever side we came from, those animals are not the ones that should exist now
+    for (const herd of this.herds) {
+      for (const animal of herd.animals) {
+        animal.active = false;
+        animal.respawnIn = 0;
+        animal.remoteSeen = 0;
+      }
+    }
+  }
+
+  private updateRemoteAnimal(herd: any, animal: any, dt: number): boolean {
+    if (animal.active && this.time.value - animal.remoteSeen > REMOTE_FORGET_SECONDS) animal.active = false;
+    if (animal.flash > 0) {
+      animal.flash -= dt;
+      if (animal.flash <= 0) this.setTint(herd, animal, animal.tint);
+    }
+    if (!animal.active) {
+      this.dummy.scale.setScalar(0);
+      this.dummy.updateMatrix();
+      herd.mesh.setMatrixAt(animal.index, this.dummy.matrix);
+      herd.moving.setX(animal.index, 0);
+      return false;
+    }
+    const rate = Math.min(1, dt * REMOTE_SMOOTHING);
+    animal.x += (animal.targetX - animal.x) * rate;
+    animal.z += (animal.targetZ - animal.z) * rate;
+    animal.y += (animal.groundY - animal.y) * rate;
+    const turn = Math.atan2(Math.sin(animal.targetYaw - animal.yaw), Math.cos(animal.targetYaw - animal.yaw));
+    animal.yaw += turn * rate;
+    const hop = animal.moving ? Math.abs(Math.sin(this.time.value * 9 + animal.phase)) * herd.species.hop : 0;
+    this.dummy.position.set(animal.x, animal.y + hop, animal.z);
+    this.dummy.rotation.set(0, animal.yaw, 0);
+    this.dummy.scale.setScalar(animal.scale);
+    this.dummy.updateMatrix();
+    herd.mesh.setMatrixAt(animal.index, this.dummy.matrix);
+    herd.moving.setX(animal.index, animal.moving ? 1 : 0);
+    return true;
+  }
+
+  /** The living animals as a flat list for sending: herd, index, x, y, z, yaw, moving. */
+  getSnapshot(): number[] {
+    const snapshot: number[] = [];
+    const round = (n: number) => Math.round(n * 10) / 10;
+    this.herds.forEach((herd, h) => {
+      for (const animal of herd.animals) {
+        if (animal.active) snapshot.push(h, animal.index, round(animal.x), round(animal.y), round(animal.z), round(animal.yaw), animal.moving ? 1 : 0);
+      }
+    });
+    return snapshot;
+  }
+
+  // A snapshot sent before a kill can arrive after it through the slower relay, and must not bring
+  // that animal back. `sequence` is the message's number, which keeps rising on the host.
+  applySnapshot(snapshot: number[], sequence: number) {
+    if (!this.following) return;
+    for (let i = 0; i + REMOTE_FIELDS <= snapshot.length; i += REMOTE_FIELDS) {
+      const herd = this.herds[snapshot[i]];
+      const animal = herd && herd.animals[snapshot[i + 1]];
+      if (!animal || sequence <= (animal.killedAtSequence || 0)) continue;
+      const [x, y, z, yaw, moving] = snapshot.slice(i + 2, i + REMOTE_FIELDS);
+      if (![x, y, z, yaw].every(Number.isFinite) || Math.abs(x) > 1e6 || Math.abs(z) > 1e6 || Math.abs(y) > 512) continue;
+      if (!animal.active || Math.hypot(animal.x - x, animal.z - z) > REMOTE_SNAP_DISTANCE) {
+        animal.x = x;
+        animal.z = z;
+        animal.y = y;
+        animal.yaw = yaw;
+      }
+      animal.active = true;
+      animal.targetX = x;
+      animal.targetZ = z;
+      animal.groundY = y;
+      animal.targetYaw = yaw;
+      animal.moving = moving === 1;
+      animal.remoteSeen = this.time.value;
+    }
+  }
+
+  /** An animal by its place in the herds, as other devices refer to it. */
+  getAnimalRef(herdIndex: unknown, animalIndex: unknown): ArrowHit | null {
+    const herd = this.herds[herdIndex as number];
+    const animal = herd && herd.animals[animalIndex as number];
+    if (!animal) return null;
+    return { animal, species: herd.species, herd, position: new THREE.Vector3(animal.x, animal.y + herd.species.hipHeight + 0.2, animal.z) };
+  }
+
+  /** Shows a hit that the host reported. */
+  showRemoteHit(hit: ArrowHit, killed: boolean, sequence: number) {
+    if (killed) {
+      hit.animal.active = false;
+      hit.animal.remoteSeen = 0;
+      hit.animal.killedAtSequence = sequence;
+    }
+    hit.animal.flash = HIT_FLASH_SECONDS;
+    this.setTint(hit.herd, hit.animal, HIT_FLASH_COLOR);
+  }
+
   update(dt, center, viewRadius) {
     this.time.value += dt;
     this.frame = (this.frame || 0) + 1;
     const range = Math.min(ANIMAL_MAX_RANGE, viewRadius * CHUNK_SIZE);
 
     for (const herd of this.herds) {
-      const { species, mesh, animals, moving } = herd;
+      const { species, mesh, animals, moving, simulated } = herd;
       let anyActive = false;
 
       animals.forEach((animal, i) => {
+        if (this.following) {
+          if (this.updateRemoteAnimal(herd, animal, dt)) anyActive = true;
+          return;
+        }
+        if (i >= simulated) {
+          this.dummy.scale.setScalar(0);
+          this.dummy.updateMatrix();
+          mesh.setMatrixAt(animal.index, this.dummy.matrix);
+          return;
+        }
         if (animal.active && Math.hypot(animal.x - center.x, animal.z - center.z) >= range) animal.active = false;
         const mates = animals.slice(i - (i % species.herdSize), i - (i % species.herdSize) + species.herdSize);
         animal.respawnIn = Math.max(0, (animal.respawnIn || 0) - dt);
