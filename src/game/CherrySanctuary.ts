@@ -11,6 +11,10 @@ import { InventoryPanel } from '../ui/InventoryPanel';
 import type { ArrowHit } from '../creatures/AnimalSystem';
 
 const HOTBAR_STORAGE_KEY = 'cherry_hotbar';
+const MELEE_REACH = 3;
+const MELEE_COOLDOWN_MS = 450;
+// Bare hands, then the wooden and stone pickaxe. An arrow does more (see ARROW_DAMAGE).
+const MELEE_DAMAGE_BY_PICKAXE_TIER = [1, 2, 3];
 const HOLDABLE_TOOLS = new Set(['wooden_pickaxe', 'stone_pickaxe', 'fishing_rod', 'bow']);
 import { BlockPlacementAnimator } from '../effects/BlockPlacementAnimator';
 import { FishSystem } from '../creatures/FishSystem';
@@ -29,6 +33,7 @@ import { WindSystem } from '../world/WindSystem';
 // 9. MAIN ENGINE ORCHESTRATOR
 // =========================================================================
 export class CherrySanctuary {
+  declare nextMeleeAt: number;
   declare heldItem: HeldItem;
   declare heldTool: string | null;
   declare inventory: Inventory;
@@ -254,12 +259,13 @@ export class CherrySanctuary {
     this.inventory = new Inventory();
     this.hotbarItems = this.loadHotbar();
     this.inventory.onChange(() => this.refreshHotbarCounts());
+    this.nextMeleeAt = 0;
     this.heldItem = new HeldItem(this.textures);
     this.heldTool = null;
     this.inventoryPanel = new InventoryPanel(this.inventory, this.textures, id => this.putInActiveSlot(id), id => this.holdTool(id), message => this.showToast(message));
     this.scene.add(this.camera); // things it carries, such as the fishing rod, are drawn only if it is in the scene
     this.fishing = new Fishing(this.scene, this.world, (event, item) => this.handleFishingEvent(event, item));
-    this.hunting = new Hunting(this.scene, this.world, this.animals, (killed, hit) => this.handleArrowHit(killed, hit));
+    this.hunting = new Hunting(this.scene, this.world, this.animals, (killed, hit, damage) => this.handleAnimalHit(killed, hit, damage));
     this.initHotbarUI();
     this.initEventListeners();
     this.initHaikuCycler();
@@ -804,14 +810,39 @@ export class CherrySanctuary {
     this.blockParticles.burst(position.x - 0.5, position.y - 0.5, position.z - 0.5, BLOCK_DEFS.WATER, count);
   }
 
-  handleArrowHit(killed: boolean, hit: ArrowHit) {
+  // Close combat. Returns true if an animal was in reach, so the button does not also dig behind it.
+  tryAttackAnimal(): boolean {
+    const camera = this.camera.position;
+    const direction = this.camera.getWorldDirection(new THREE.Vector3());
+    // Measured from the player, so the third-person camera's distance does not use up the reach
+    const reach = MELEE_REACH + camera.distanceTo(this.player.pos) - 1.6;
+    const end = camera.clone().addScaledVector(direction, Math.max(MELEE_REACH, reach));
+    const hit = this.animals.hitTest(camera, end);
+    if (!hit) return false;
+
+    // A wall or tree between the player and the animal protects it
+    const block = this.getTargetBlock();
+    if (block && camera.distanceTo(new THREE.Vector3(block.x + 0.5, block.y + 0.5, block.z + 0.5)) < camera.distanceTo(hit.position)) return false;
+
+    const now = performance.now();
+    if (now < this.nextMeleeAt) return true;
+    this.nextMeleeAt = now + MELEE_COOLDOWN_MS;
+
+    const damage = MELEE_DAMAGE_BY_PICKAXE_TIER[this.inventory.pickaxeTier()];
+    this.heldItem.startSwing();
+    this.audio.playBlockBreak();
+    this.handleAnimalHit(this.animals.damage(hit, this.player.pos, damage), hit, damage);
+    return true;
+  }
+
+  handleAnimalHit(killed: boolean, hit: ArrowHit, damage: number) {
     if (!killed) {
-      this.showToast('Trúng rồi! Nó đang bỏ chạy');
+      this.showToast(`${hit.species.name} -${damage} (còn ${hit.animal.health}/${hit.species.health})`);
       return;
     }
     for (const [itemId, amount] of hit.species.drops) this.inventory.add(itemId, amount);
     this.blockParticles.burst(hit.position.x - 0.5, hit.position.y - 0.5, hit.position.z - 0.5, BLOCK_DEFS.WOOD_LOG, 14);
-    this.showToast(`Săn được lợn rừng: ${hit.species.drops.map(([id, n]) => `+${n} ${ITEMS[id].name}`).join(', ')}`);
+    this.showToast(`Săn được ${hit.species.name}: ${hit.species.drops.map(([id, n]) => `+${n} ${ITEMS[id].name}`).join(', ')}`);
   }
 
   selectSlot(idx) {
@@ -1316,6 +1347,8 @@ export class CherrySanctuary {
   }
 
   handleBreakBlock() {
+    if (this.tryAttackAnimal()) return;
+
     const target = this.getTargetBlock();
     if (!target) {
       this.showToast(OUT_OF_REACH_MESSAGE);

@@ -10,20 +10,23 @@ export const ANIMAL_FLEE_SPEED_FACTOR = 3;
 export const ANIMAL_MAX_STEP = 1;
 export const ANIMAL_GROUND_CHECK_FRAMES = 15; // the ground can be dug away from under a standing animal
 export const BOAR_MIN_DISTANCE_FROM_START = 130;
-const ARROW_HIT_RADIUS = 0.75;
+const HIT_FLASH_SECONDS = 0.2;
+const HIT_FLASH_COLOR = 0xff4d4d;
 const ANIMAL_RESPAWN_SECONDS = 25;
 
 export interface ArrowHit {
   animal: any;
   species: any;
+  herd: any;
   position: THREE.Vector3;
 }
 
 export const ANIMAL_SPECIES = {
-  // The only animal that can be hunted, and only found far from the garden
+  // Tough, and only found far from the garden
   boar: {
+    name: 'Lợn rừng', hitRadius: 0.75,
     herdSize: 2, speed: 1.2, fleeDistance: 6, hipHeight: 0.3, hop: 0, legSpeed: 11,
-    huntable: true, health: 2, minDistanceFromStart: BOAR_MIN_DISTANCE_FROM_START,
+    health: 8, minDistanceFromStart: BOAR_MIN_DISTANCE_FROM_START,
     drops: [['meat', 2], ['hide', 1]],
     tints: [0xffffff, 0xe0d4c6, 0xc9bcae],
     parts: [
@@ -37,6 +40,7 @@ export const ANIMAL_SPECIES = {
     ]
   },
   deer: {
+    name: 'Hươu', hitRadius: 0.75, health: 6, drops: [['meat', 2], ['hide', 2]],
     herdSize: 3, speed: 1.3, fleeDistance: 5, hipHeight: 0.6, hop: 0, legSpeed: 9,
     tints: [0xffffff, 0xe8dccb, 0xfff1e0],
     parts: [
@@ -52,6 +56,7 @@ export const ANIMAL_SPECIES = {
     ]
   },
   sheep: {
+    name: 'Cừu', hitRadius: 0.6, health: 4, drops: [['meat', 1], ['wool', 2]],
     herdSize: 4, speed: 0.75, fleeDistance: 3.5, hipHeight: 0.35, hop: 0, legSpeed: 7,
     tints: [0xffffff, 0xf2eee4, 0xd9d4c8],
     parts: [
@@ -64,6 +69,7 @@ export const ANIMAL_SPECIES = {
     ]
   },
   rabbit: {
+    name: 'Thỏ', hitRadius: 0.4, health: 2, drops: [['meat', 1]],
     herdSize: 2, speed: 1.1, fleeDistance: 4, hipHeight: 0, hop: 0.32, legSpeed: 0,
     tints: [0xffffff, 0xbfa58a, 0x9c9894],
     parts: [
@@ -79,6 +85,7 @@ export const ANIMAL_SPECIES = {
 // Animals that wander near the player and run away when approached. They walk on real blocks
 // and turn back at water, cliffs, trees and walls. Each player's animals are their own.
 export class AnimalSystem {
+  private flashColor = new THREE.Color();
   declare dummy: any;
   declare frame: any;
   declare herds: any;
@@ -100,9 +107,10 @@ export class AnimalSystem {
       const tint = new THREE.Color();
       const animals = [];
       for (let i = 0; i < count; i++) {
-        mesh.setColorAt(i, tint.setHex(species.tints[Math.floor(Math.random() * species.tints.length)]));
+        const animalTint = species.tints[Math.floor(Math.random() * species.tints.length)];
+        mesh.setColorAt(i, tint.setHex(animalTint));
         animals.push({
-          index: i, active: false, x: 0, y: 0, z: 0, yaw: 0, targetYaw: 0, timer: 0, moving: false,
+          index: i, tint: animalTint, flash: 0, active: false, x: 0, y: 0, z: 0, yaw: 0, targetYaw: 0, timer: 0, moving: false,
           fleeing: 0, cellX: null, cellZ: null, groundY: 0, scale: 0.9 + Math.random() * 0.2,
           phase: Math.random() * Math.PI * 2
         });
@@ -281,29 +289,39 @@ export class AnimalSystem {
     animal.y = THREE.MathUtils.lerp(animal.y, animal.groundY, Math.min(1, dt * 10));
   }
 
-  // Whether an arrow's path this frame touched a huntable animal. Garden animals are never hit.
-  hitTestArrow(from: THREE.Vector3, to: THREE.Vector3): ArrowHit | null {
+  // The nearest animal touched by the line from one point to another, or null.
+  hitTest(from: THREE.Vector3, to: THREE.Vector3): ArrowHit | null {
     const dx = to.x - from.x, dy = to.y - from.y, dz = to.z - from.z;
     const lengthSquared = dx * dx + dy * dy + dz * dz || 1;
-    for (const { species, animals } of this.herds) {
-      if (!species.huntable) continue;
+    let nearest: ArrowHit | null = null;
+    let nearestAlong = Infinity;
+    for (const herd of this.herds) {
+      const { species, animals } = herd;
       for (const animal of animals) {
         if (!animal.active) continue;
         const cy = animal.y + species.hipHeight + 0.2;
         const t = Math.max(0, Math.min(1, ((animal.x - from.x) * dx + (cy - from.y) * dy + (animal.z - from.z) * dz) / lengthSquared));
         const distance = Math.hypot(from.x + dx * t - animal.x, from.y + dy * t - cy, from.z + dz * t - animal.z);
-        if (distance <= ARROW_HIT_RADIUS) {
-          return { animal, species, position: new THREE.Vector3(animal.x, cy, animal.z) };
+        if (distance <= species.hitRadius && t < nearestAlong) {
+          nearestAlong = t;
+          nearest = { animal, species, herd, position: new THREE.Vector3(animal.x, cy, animal.z) };
         }
       }
     }
-    return null;
+    return nearest;
   }
 
-  // Returns true if the arrow killed it. A wounded animal runs from where the shot came from.
-  damage(hit: ArrowHit, shotFrom: THREE.Vector3): boolean {
-    const { animal } = hit;
-    animal.health -= 1;
+  private setTint(herd: any, animal: any, hex: number) {
+    herd.mesh.setColorAt(animal.index, this.flashColor.setHex(hex));
+    herd.mesh.instanceColor.needsUpdate = true;
+  }
+
+  // Returns true if the blow killed it. A wounded animal flashes and runs from where it came from.
+  damage(hit: ArrowHit, from: THREE.Vector3, amount: number): boolean {
+    const { animal, herd } = hit;
+    animal.health -= amount;
+    animal.flash = HIT_FLASH_SECONDS;
+    this.setTint(herd, animal, HIT_FLASH_COLOR);
     if (animal.health <= 0) {
       animal.active = false;
       animal.respawnIn = ANIMAL_RESPAWN_SECONDS;
@@ -311,7 +329,7 @@ export class AnimalSystem {
     }
     animal.fleeing = ANIMAL_FLEE_SECONDS;
     animal.moving = true;
-    animal.targetYaw = Math.atan2(animal.x - shotFrom.x, animal.z - shotFrom.z);
+    animal.targetYaw = Math.atan2(animal.x - from.x, animal.z - from.z);
     return false;
   }
 
@@ -328,6 +346,10 @@ export class AnimalSystem {
         if (animal.active && Math.hypot(animal.x - center.x, animal.z - center.z) >= range) animal.active = false;
         const mates = animals.slice(i - (i % species.herdSize), i - (i % species.herdSize) + species.herdSize);
         animal.respawnIn = Math.max(0, (animal.respawnIn || 0) - dt);
+        if (animal.flash > 0) {
+          animal.flash -= dt;
+          if (animal.flash <= 0) this.setTint(herd, animal, animal.tint);
+        }
         if (!animal.active) this.respawn(animal, species, mates, center, range);
 
         if (!animal.active) {

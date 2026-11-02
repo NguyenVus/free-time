@@ -34,8 +34,9 @@ export const ITEMS: Record<string, ItemDefinition> = {
   carp: { name: 'Cá chép', emoji: '🐟' },
   silverfish: { name: 'Cá bạc', emoji: '🐠' },
   koi: { name: 'Cá koi quý', emoji: '🎏' },
-  meat: { name: 'Thịt lợn rừng', emoji: '🍖' },
-  hide: { name: 'Da lợn rừng', emoji: '🟤' }
+  meat: { name: 'Thịt', emoji: '🍖' },
+  hide: { name: 'Da thú', emoji: '🟤' },
+  wool: { name: 'Len', emoji: '🧶' }
 };
 
 export type ItemStack = [itemId: string, count: number];
