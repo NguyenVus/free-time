@@ -1623,7 +1623,7 @@
       [0.95, 0.35, 0.55]
     ];
     const FLOWER_STEM_COLOR = [0.22, 0.5, 0.16];
-    const FLOWER_STEM_WIDTH = 0.1;
+    const FLOWER_STEM_WIDTH = 0.06;
     const TOUCH_LOOK_SPEED = 0.005;
     const IS_TOUCH_DEVICE = window.matchMedia('(pointer: coarse)').matches;
 
@@ -2560,8 +2560,8 @@
 
             const x = wx + 0.5 + (random(1) - 0.5) * 0.6;
             const z = wz + 0.5 + (random(2) - 0.5) * 0.6;
-            const topY = groundY + 0.45 + random(3) * 0.5;
-            const half = 0.3 + random(4) * 0.2;
+            const topY = groundY + 0.28 + random(3) * 0.27;
+            const half = 0.2 + random(4) * 0.12;
             const angle = random(5) * Math.PI * 2;
             const tiltX = (random(6) - 0.5) * 0.3;
             const tiltZ = (random(7) - 0.5) * 0.3;
@@ -3008,7 +3008,140 @@
     // =========================================================================
     // 6. INSTANCED FALLING PETALS (GPU Instancing & Smooth Sine Motion)
     // =========================================================================
-    const PETAL_SPREAD = 60;     // width of the box of petals around the player
+    const SKY_BODY_DISTANCE = 320; // inside the camera's far plane, beyond all loaded terrain
+    const SKY_BODY_MODES = {
+      day: { sun: 1, moon: 0, sunColor: 0xfffbea, sunSize: 170 },
+      sunset: { sun: 1, moon: 0, sunColor: 0xffa04d, sunSize: 230 },
+      night: { sun: 0, moon: 1, sunColor: 0xffa04d, sunSize: 170 }
+    };
+
+    // The visible sun and moon. Both sit in the direction of the scene's main light, so what you
+    // see in the sky matches how the world is lit. They follow the camera to stay infinitely far
+    // away, and depth testing lets trees and hills pass in front of them.
+    class SkyBodies {
+      constructor(scene) {
+        const glowTexture = new THREE.CanvasTexture(this.drawGlow());
+
+        // Normal blending keeps the sunset sun orange; adding it to a pink sky would clip to white
+        this.sun = this.createSprite(glowTexture, THREE.NormalBlending, -3);
+        this.moonGlow = this.createSprite(glowTexture, THREE.AdditiveBlending, -2);
+        this.moonGlow.material.color.setHex(0x9fb2ea);
+        this.moonGlow.scale.setScalar(150);
+        this.moon = this.createSprite(new THREE.CanvasTexture(this.drawMoon()), THREE.NormalBlending, -1);
+        this.moon.scale.setScalar(44);
+        scene.add(this.sun, this.moonGlow, this.moon);
+
+        this.direction = new THREE.Vector3();
+        this.targetSunColor = new THREE.Color();
+        this.targetSun = 1;
+        this.targetMoon = 0;
+        this.targetSunSize = 170;
+      }
+
+      createSprite(texture, blending, renderOrder) {
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: texture,
+          blending,
+          transparent: true,
+          depthWrite: false,
+          fog: false,
+          opacity: 0
+        }));
+        sprite.renderOrder = renderOrder; // falling petals draw in front
+        return sprite;
+      }
+
+      drawGlow() {
+        const c = document.createElement('canvas');
+        c.width = c.height = 256;
+        const ctx = c.getContext('2d');
+        const glow = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+        glow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        glow.addColorStop(0.11, 'rgba(255, 255, 255, 1)');
+        glow.addColorStop(0.15, 'rgba(255, 255, 255, 0.55)');
+        glow.addColorStop(0.3, 'rgba(255, 255, 255, 0.18)');
+        glow.addColorStop(0.6, 'rgba(255, 255, 255, 0.05)');
+        glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, 256, 256);
+        return c;
+      }
+
+      drawMoon() {
+        const c = document.createElement('canvas');
+        c.width = c.height = 256;
+        const ctx = c.getContext('2d');
+        const disc = (x, y, r) => {
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        };
+
+        ctx.beginPath();
+        ctx.arc(128, 128, 118, 0, Math.PI * 2);
+        ctx.clip();
+
+        const face = ctx.createRadialGradient(110, 105, 20, 128, 128, 120);
+        face.addColorStop(0, '#fbf9ef');
+        face.addColorStop(0.75, '#e9e6d8');
+        face.addColorStop(1, '#bdbbb0');
+        ctx.fillStyle = face;
+        ctx.fillRect(0, 0, 256, 256);
+
+        // Maria: the large dark plains, with soft edges that blend where they overlap
+        [[86, 84, 46], [132, 66, 34], [158, 104, 42], [78, 146, 38], [122, 128, 32], [176, 156, 26], [108, 176, 22]]
+          .forEach(([x, y, r]) => {
+            const mare = ctx.createRadialGradient(x, y, r * 0.2, x, y, r);
+            mare.addColorStop(0, 'rgba(118, 120, 130, 0.42)');
+            mare.addColorStop(0.65, 'rgba(118, 120, 130, 0.3)');
+            mare.addColorStop(1, 'rgba(118, 120, 130, 0)');
+            ctx.fillStyle = mare;
+            disc(x, y, r);
+          });
+
+        // Craters: a shallow bowl with a pale rim offset toward the light
+        [[176, 74, 5], [64, 188, 6], [138, 204, 9], [192, 186, 4], [40, 112, 4], [104, 224, 3], [150, 36, 3]]
+          .forEach(([x, y, r]) => {
+            ctx.fillStyle = 'rgba(255, 255, 250, 0.5)';
+            disc(x + 1.5, y + 1.5, r);
+            ctx.fillStyle = 'rgba(120, 120, 126, 0.32)';
+            disc(x, y, r);
+          });
+        return c;
+      }
+
+      setMode(mode, smooth) {
+        const settings = SKY_BODY_MODES[mode];
+        this.targetSun = settings.sun;
+        this.targetMoon = settings.moon;
+        this.targetSunSize = settings.sunSize;
+        this.targetSunColor.setHex(settings.sunColor);
+        if (!smooth) {
+          this.sun.material.opacity = settings.sun;
+          this.moon.material.opacity = settings.moon;
+          this.moonGlow.material.opacity = settings.moon * 0.4;
+          this.sun.material.color.setHex(settings.sunColor);
+          this.sun.scale.setScalar(settings.sunSize);
+        }
+      }
+
+      update(camera, lightPosition, rate) {
+        const sunMaterial = this.sun.material;
+        sunMaterial.opacity = THREE.MathUtils.lerp(sunMaterial.opacity, this.targetSun, rate);
+        sunMaterial.color.lerp(this.targetSunColor, rate);
+        this.sun.scale.setScalar(THREE.MathUtils.lerp(this.sun.scale.x, this.targetSunSize, rate));
+        this.moon.material.opacity = THREE.MathUtils.lerp(this.moon.material.opacity, this.targetMoon, rate);
+        this.moonGlow.material.opacity = this.moon.material.opacity * 0.4;
+
+        this.direction.copy(lightPosition).normalize().multiplyScalar(SKY_BODY_DISTANCE);
+        for (const body of [this.sun, this.moonGlow, this.moon]) {
+          body.position.copy(camera.position).add(this.direction);
+          body.visible = body.material.opacity > 0.005;
+        }
+      }
+    }
+
+    const PETAL_SPREAD = 60;    // width of the box of petals around the player
     const PETAL_MAX_DIST = 36;    // recycled beyond this horizontal distance
     const PETAL_MIN_HEIGHT = -4;  // relative to the player
     const PETAL_MAX_HEIGHT = 15;
@@ -3712,6 +3845,7 @@
 
       initPetalsAndLighting() {
         this.petals = new PetalSystem(this.scene);
+        this.skyBodies = new SkyBodies(this.scene);
 
         this.sunLight = new THREE.DirectionalLight(0xfff3db, 1.9);
         this.sunLight.castShadow = QUALITY.shadows;
@@ -3823,7 +3957,7 @@
           ffOpacity = 0.0;
           sunsetGlow = 0.0;
           lanternInt = 0.05;
-          this.targetSunPos.set(65, 80, 45);
+          this.targetSunPos.set(80, 46, 54); // low enough to see without looking straight up
           if (bloomEl) bloomEl.style.opacity = '0.35';
         } else if (mode === 'sunset') {
           skyCol = 0xf472b6;
@@ -3846,7 +3980,7 @@
           ffOpacity = 0.85;
           sunsetGlow = 0.0;
           lanternInt = 2.4;
-          this.targetSunPos.set(-60, 90, -40);
+          this.targetSunPos.set(-70, 48, -50); // the moon rises opposite the sun
           if (bloomEl) bloomEl.style.opacity = '0.12';
         }
 
@@ -3858,6 +3992,7 @@
         this.targetFfOpacity = ffOpacity;
         this.targetSunsetGlow = sunsetGlow;
         this.targetLanternInt = lanternInt;
+        this.skyBodies.setMode(mode, smooth);
 
         if (!smooth) {
           this.scene.background = new THREE.Color(skyCol);
@@ -5283,6 +5418,9 @@
             this.updateDebugOverlay();
           }
         }
+
+        // After the camera has moved this frame, so the sun and moon do not jitter
+        this.skyBodies.update(this.camera, this.sunLight.position, 1.0 - Math.exp(-2.2 * dt));
 
         this.renderer.render(this.scene, this.camera);
       }
