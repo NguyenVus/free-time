@@ -22,6 +22,16 @@ export const SYNC_MAX_EDITS_PER_SECOND = 1000;
 export const SYNC_RESEND_DELAY_MS = 3000;
 export const SYNC_MAX_CLOCK_AHEAD_MS = 10 * 60 * 1000;
 export const MULTIPLAYER_DEFAULT_ROOM = 'vuon-chung';
+// Players closer than this share one set of animals. They stop sharing a little further out than
+// they start, so someone walking along the boundary does not keep swapping herds.
+export const ANIMAL_SHARE_DISTANCE = 56;
+export const ANIMAL_UNSHARE_DISTANCE = 72;
+export const ANIMAL_SNAPSHOT_INTERVAL_MS = 250;
+export const ANIMAL_HOST_CHECK_MS = 500;
+export const ANIMAL_MAX_HIT_DAMAGE = 4;
+export const ANIMAL_MAX_HITS_PER_SECOND = 10;
+export const ANIMAL_MAX_HIT_DISTANCE = 60; // an arrow cannot fly further than this
+export const SEEN_EVENTS_LIMIT = 200;
 export const MULTIPLAYER_MAX_PEERS = 8;
 export const MULTIPLAYER_POSE_INTERVAL_MS = 200;
 export const MULTIPLAYER_HEARTBEAT_MS = 1000;
@@ -73,6 +83,11 @@ export class MultiplayerClient {
   declare name: any;
   declare peers: any;
   declare relays: any;
+  declare seenEvents: Set<string>;
+  declare animalHostId: string | null;
+  declare hasAnimalFollowers: boolean;
+  declare lastHostCheck: number;
+  declare lastAnimalSnapshot: number;
   declare resendTimer: any;
   declare selfId: any;
   declare sequence: any;
@@ -88,6 +103,11 @@ export class MultiplayerClient {
     this.sequence = Date.now(); // keeps rising across reloads, so old messages can be told apart
     this.relays = [];
     this.departed = new Map();
+    this.seenEvents = new Set();
+    this.animalHostId = null;
+    this.hasAnimalFollowers = false;
+    this.lastHostCheck = 0;
+    this.lastAnimalSnapshot = 0;
     this.status = 'off';
     this.name = '';
     this.lastPoseSent = 0;
@@ -134,7 +154,7 @@ export class MultiplayerClient {
   // Anything else is sent with delivery confirmation.
   publish(fields) {
     const message = JSON.stringify({ id: this.selfId, seq: ++this.sequence, name: this.name, ...fields });
-    const options = { qos: fields.pose ? 0 : 1 };
+    const options = { qos: fields.pose || fields.animals ? 0 : 1 };
     for (const relay of this.relays) {
       if (relay.connected) relay.publish(this.topic, message, options);
     }
@@ -173,6 +193,12 @@ export class MultiplayerClient {
     if (message.needEdits === true) this.scheduleSharingEdits();
     if (Number.isFinite(message.reset)) this.handleReset(message.reset, peer);
     if (Array.isArray(message.edits)) this.handleEdits(message.edits, peer);
+    if (Array.isArray(message.animals) && message.id === this.animalHostId && message.seq > peer.lastAnimalSequence) {
+      peer.lastAnimalSequence = message.seq;
+      this.game.animals.applySnapshot(message.animals);
+    }
+    if (message.animalHitRequest && this.isNewEvent(message)) this.handleAnimalHitRequest(message.animalHitRequest, peer, message.id);
+    if (message.animalHit && this.isNewEvent(message)) this.handleAnimalHit(message.animalHit, message.id);
   }
 
   shareEdit(x: number, y: number, z: number, blockId: number, time: number) {
@@ -181,6 +207,83 @@ export class MultiplayerClient {
 
   shareReset(time: number) {
     this.publish({ reset: time });
+  }
+
+  // Everyone near each other agrees on the same host: the lowest id among them
+  updateAnimalHost(now: number) {
+    if (now - this.lastHostCheck < ANIMAL_HOST_CHECK_MS) return;
+    this.lastHostCheck = now;
+    const me = this.game.player.pos;
+    const previous = this.animalHostId;
+    let host = this.selfId;
+    this.hasAnimalFollowers = false;
+    for (const [peerId, peer] of this.peers) {
+      if (!peer.placed) continue;
+      const distance = me.distanceTo(peer.position);
+      const limit = peerId === previous ? ANIMAL_UNSHARE_DISTANCE : ANIMAL_SHARE_DISTANCE;
+      if (distance >= limit) continue;
+      if (peerId < host) host = peerId;
+      if (peerId > this.selfId) this.hasAnimalFollowers = true;
+    }
+    this.animalHostId = host === this.selfId ? null : host;
+    this.game.animals.setFollowing(this.animalHostId !== null);
+  }
+
+  requestAnimalHit(hit, damage: number) {
+    const h = this.game.animals.herds.indexOf(hit.herd);
+    this.publish({ animalHitRequest: [h, hit.animal.index, damage] });
+  }
+
+  shareAnimalHit(hit, damage: number, killed: boolean, by: string) {
+    if (this.peers.size === 0) return;
+    const h = this.game.animals.herds.indexOf(hit.herd);
+    this.publish({ animalHit: [h, hit.animal.index, damage, Math.max(0, hit.animal.health), killed ? 1 : 0, by] });
+  }
+
+  // Each message arrives once per relay, but a blow must only count once
+  isNewEvent(message): boolean {
+    const key = `${message.id}:${message.seq}`;
+    if (this.seenEvents.has(key)) return false;
+    this.seenEvents.add(key);
+    if (this.seenEvents.size > SEEN_EVENTS_LIMIT) this.seenEvents.delete(this.seenEvents.values().next().value);
+    return true;
+  }
+
+  // Runs on the host: another player struck one of its animals
+  handleAnimalHitRequest(request: unknown, peer, peerId: string) {
+    if (this.animalHostId !== null || !Array.isArray(request) || request.length !== 3) return;
+    const [h, i, damage] = request;
+    if (!Number.isInteger(damage) || damage < 1 || damage > ANIMAL_MAX_HIT_DAMAGE) return;
+    const hit = this.game.animals.getAnimalRef(h, i);
+    if (!hit || !hit.animal.active) return;
+    if (peer.position.distanceTo(hit.position) > ANIMAL_MAX_HIT_DISTANCE) return;
+
+    const now = performance.now();
+    if (now - peer.hitWindowStart >= 1000) {
+      peer.hitWindowStart = now;
+      peer.hitsInWindow = 0;
+    }
+    if (++peer.hitsInWindow > ANIMAL_MAX_HITS_PER_SECOND) return;
+
+    const killed = this.game.animals.damage(hit, peer.position, damage);
+    this.shareAnimalHit(hit, damage, killed, peerId);
+    if (killed) this.game.showToast(`${peer.name} săn được ${hit.species.name}`);
+  }
+
+  // Runs on the others: the host reports what a blow did
+  handleAnimalHit(result: unknown, peerId: string) {
+    if (peerId !== this.animalHostId || !Array.isArray(result) || result.length !== 6) return;
+    const [h, i, damage, health, killed, by] = result;
+    const hit = this.game.animals.getAnimalRef(h, i);
+    if (!hit || !Number.isInteger(damage) || !Number.isInteger(health)) return;
+    this.game.animals.showRemoteHit(hit, killed === 1);
+    if (by === this.selfId) {
+      hit.animal.health = health;
+      this.game.handleAnimalHit(killed === 1, hit, damage);
+    } else if (killed === 1) {
+      const name = this.peers.get(by)?.name;
+      if (name) this.game.showToast(`${name} săn được ${hit.species.name}`);
+    }
   }
 
   handleReset(time, peer) {
@@ -293,6 +396,9 @@ export class MultiplayerClient {
       greetUntil: 0,
       greetYaw: null,
       lastSequence: 0,
+      lastAnimalSequence: 0,
+      hitWindowStart: 0,
+      hitsInWindow: 0,
       editWindowStart: 0,
       editsInWindow: 0,
       lastHeard: performance.now()
@@ -440,6 +546,12 @@ export class MultiplayerClient {
         this.lastPose = pose;
         this.lastPoseSent = now;
       }
+    }
+
+    this.updateAnimalHost(now);
+    if (this.animalHostId === null && this.hasAnimalFollowers && now - this.lastAnimalSnapshot >= ANIMAL_SNAPSHOT_INTERVAL_MS) {
+      this.lastAnimalSnapshot = now;
+      this.publish({ animals: this.game.animals.getSnapshot() });
     }
 
     const rate = 1.0 - Math.exp(-12 * dt);
