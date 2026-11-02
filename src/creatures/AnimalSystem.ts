@@ -393,12 +393,14 @@ export class AnimalSystem {
     return snapshot;
   }
 
-  applySnapshot(snapshot: number[]) {
+  // A snapshot sent before a kill can arrive after it through the slower relay, and must not bring
+  // that animal back. `sequence` is the message's number, which keeps rising on the host.
+  applySnapshot(snapshot: number[], sequence: number) {
     if (!this.following) return;
     for (let i = 0; i + REMOTE_FIELDS <= snapshot.length; i += REMOTE_FIELDS) {
       const herd = this.herds[snapshot[i]];
       const animal = herd && herd.animals[snapshot[i + 1]];
-      if (!animal) continue;
+      if (!animal || sequence <= (animal.killedAtSequence || 0)) continue;
       const [x, y, z, yaw, moving] = snapshot.slice(i + 2, i + REMOTE_FIELDS);
       if (![x, y, z, yaw].every(Number.isFinite) || Math.abs(x) > 1e6 || Math.abs(z) > 1e6 || Math.abs(y) > 512) continue;
       if (!animal.active || Math.hypot(animal.x - x, animal.z - z) > REMOTE_SNAP_DISTANCE) {
@@ -426,10 +428,11 @@ export class AnimalSystem {
   }
 
   /** Shows a hit that the host reported. */
-  showRemoteHit(hit: ArrowHit, killed: boolean) {
+  showRemoteHit(hit: ArrowHit, killed: boolean, sequence: number) {
     if (killed) {
       hit.animal.active = false;
       hit.animal.remoteSeen = 0;
+      hit.animal.killedAtSequence = sequence;
     }
     hit.animal.flash = HIT_FLASH_SECONDS;
     this.setTint(hit.herd, hit.animal, HIT_FLASH_COLOR);

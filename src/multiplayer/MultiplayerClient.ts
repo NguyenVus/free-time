@@ -202,10 +202,10 @@ export class MultiplayerClient {
     if (message.editDigest) this.handleEditDigest(message.editDigest);
     if (Array.isArray(message.animals) && message.id === this.animalHostId && message.seq > peer.lastAnimalSequence) {
       peer.lastAnimalSequence = message.seq;
-      this.game.animals.applySnapshot(message.animals);
+      this.game.animals.applySnapshot(message.animals, message.seq);
     }
     if (message.animalHitRequest && this.isNewEvent(message)) this.handleAnimalHitRequest(message.animalHitRequest, peer, message.id);
-    if (message.animalHit && this.isNewEvent(message)) this.handleAnimalHit(message.animalHit, message.id);
+    if (message.animalHit && this.isNewEvent(message)) this.handleAnimalHit(message.animalHit, message.id, message.seq);
   }
 
   // A short summary of this world's edits. Relays can lose messages, so players compare summaries
@@ -304,12 +304,12 @@ export class MultiplayerClient {
   }
 
   // Runs on the others: the host reports what a blow did
-  handleAnimalHit(result: unknown, peerId: string) {
+  handleAnimalHit(result: unknown, peerId: string, sequence: number) {
     if (peerId !== this.animalHostId || !Array.isArray(result) || result.length !== 6) return;
     const [h, i, damage, health, killed, by] = result;
     const hit = this.game.animals.getAnimalRef(h, i);
     if (!hit || !Number.isInteger(damage) || !Number.isInteger(health)) return;
-    this.game.animals.showRemoteHit(hit, killed === 1);
+    this.game.animals.showRemoteHit(hit, killed === 1, sequence);
     if (by === this.selfId) {
       hit.animal.health = health;
       this.game.handleAnimalHit(killed === 1, hit, damage);
