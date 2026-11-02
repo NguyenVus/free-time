@@ -603,6 +603,121 @@
       color: #38bdf8;
       font-weight: 600;
     }
+
+    /* Cinematic Aerial Tour HUD Overlay */
+    #tour-hud {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      z-index: 950;
+      pointer-events: auto;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    #tour-hud.hidden {
+      display: none !important;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .tour-top-bar {
+      background: rgba(18, 10, 24, 0.9);
+      border: 1px solid rgba(244, 114, 182, 0.55);
+      border-radius: 30px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(244, 114, 182, 0.25);
+    }
+    .tour-badge {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      color: #f472b6;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      background: rgba(244, 114, 182, 0.16);
+      border-radius: 14px;
+      white-space: nowrap;
+    }
+    .tour-controls-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .tour-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #f8fafc;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s ease;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .tour-btn:hover {
+      background: rgba(244, 114, 182, 0.28);
+      border-color: rgba(244, 114, 182, 0.7);
+      transform: translateY(-1px);
+    }
+    .tour-btn:active {
+      transform: translateY(1px);
+    }
+    .tour-btn.active {
+      background: linear-gradient(135deg, #ec4899, #be185d);
+      border-color: #f472b6;
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.6);
+    }
+    .tour-btn-exit {
+      background: rgba(239, 68, 68, 0.22);
+      border-color: rgba(239, 68, 68, 0.5);
+    }
+    .tour-btn-exit:hover {
+      background: rgba(239, 68, 68, 0.45);
+      border-color: rgba(239, 68, 68, 0.8);
+    }
+    .tour-hint-bar {
+      background: rgba(15, 8, 20, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 4px 14px;
+      font-size: 11px;
+      color: #cbd5e1;
+      backdrop-filter: blur(8px);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      white-space: nowrap;
+    }
+    @media (max-width: 768px) {
+      #tour-hud {
+        top: 8px;
+        width: 96%;
+      }
+      .tour-top-bar {
+        flex-direction: column;
+        padding: 8px;
+        gap: 6px;
+      }
+      .tour-controls-row {
+        justify-content: center;
+      }
+      .tour-hint-bar {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -625,6 +740,27 @@
       <button class="hud-btn" id="btn-fly" title="Bật/Tắt Bay Tự Do">🕊️ Bay: TẮT</button>
       <button class="hud-btn" id="btn-time" title="Chuyển Ngày/Hoàng Hôn/Đêm">☀️ Ban Ngày</button>
       <button class="hud-btn" id="btn-menu" title="Mở Cài Đặt (ESC)">⚙️ Menu</button>
+    </div>
+  </div>
+
+  <!-- Cinematic Aerial Tour HUD -->
+  <div id="tour-hud" class="hidden">
+    <div class="tour-top-bar">
+      <div class="tour-badge">🎥 THAM QUAN TRÊN KHÔNG</div>
+      <div class="tour-controls-row">
+        <button class="tour-btn" id="btn-tour-pause" title="Tạm dừng / Tiếp tục tour (Space)">⏸️ Tạm Dừng</button>
+        <button class="tour-btn" id="btn-tour-speed" title="Chỉnh tốc độ bay">⚡ Tốc Độ: Chuẩn (1x)</button>
+        <button class="tour-btn" id="btn-tour-topview" title="Góc nhìn thẳng từ trên xuống">🗺️ Nhìn Từ Trên</button>
+        <button class="tour-btn" id="btn-tour-up" title="Bay nâng độ cao (E)">⬆️ Bay Lên (E)</button>
+        <button class="tour-btn" id="btn-tour-down" title="Bay hạ độ cao (Q)">⬇️ Hạ Xuống (Q)</button>
+        <button class="tour-btn tour-btn-exit" id="btn-tour-exit" title="Thoát chuyến tham quan (C hoặc ESC)">❌ Thoát Tour</button>
+      </div>
+    </div>
+    <div class="tour-hint-bar">
+      <span>🖱️ Kéo chuột / Vuốt để nhìn quanh</span> •
+      <span>🎡 Cuộn chuột để zoom</span> •
+      <span>⌨️ WASD / Mũi tên lái tự do</span> •
+      <span>Q / E nâng hạ</span>
     </div>
   </div>
 
@@ -1541,6 +1677,40 @@
         return Math.min(CHUNK_HEIGHT - 6, Math.max(7, step));
       }
 
+      getHighestSolidY(x, z) {
+        const bx = Math.floor(x);
+        const bz = Math.floor(z);
+        const cx = Math.floor(bx / CHUNK_SIZE);
+        const cz = Math.floor(bz / CHUNK_SIZE);
+        const key = `${cx},${cz}`;
+        if (!this.decoratedChunks.has(key)) {
+          this.decoratedChunks.add(key);
+          this.buildTreesAndLandmarks(cx, cz);
+        }
+        for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+          const b = this.getBlock(bx, y, bz);
+          if (this.isCollidable(b)) {
+            return y + 1;
+          }
+        }
+        return Math.max(6, this.getTerrainHeight(bx, bz) + 1);
+      }
+
+      getMaxSolidYInRadius(x, z, radius = 1.0) {
+        let maxY = 0;
+        const minX = Math.floor(x - radius);
+        const maxX = Math.floor(x + radius);
+        const minZ = Math.floor(z - radius);
+        const maxZ = Math.floor(z + radius);
+        for (let bz = minZ; bz <= maxZ; bz++) {
+          for (let bx = minX; bx <= maxX; bx++) {
+            const y = this.getHighestSolidY(bx, bz);
+            if (y > maxY) maxY = y;
+          }
+        }
+        return maxY;
+      }
+
       generateChunkTerrain(chunk) {
         const { cx, cz, blocks } = chunk;
         const startX = cx * CHUNK_SIZE;
@@ -1634,6 +1804,9 @@
             const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
             if (Math.abs(wx - pathCurve) < 2.5) continue;
 
+            // Avoid spawning inside or too close to lakeside pavilion
+            if (Math.hypot(wx - (-4), wz - 22) < 5.5) continue;
+
             const isWeeping = (lakeDist >= 13 && lakeDist <= 21 && rand > 0.35);
             const isLarge = (!isWeeping && rand > 0.65);
             const isMedium = (!isWeeping && !isLarge && rand > 0.25);
@@ -1682,6 +1855,62 @@
             setStructBlock(-16, by + 1, bz, BLOCK_DEFS.WOOD_PLANKS);
             setStructBlock(-12, by + 1, bz, BLOCK_DEFS.WOOD_PLANKS);
           }
+        }
+
+        // Scenic Lakeside Pavilion (Vọng Cảnh Đình) at (-4, 22)
+        if (cx === -1 && cz === 1) {
+          const pavX = -4, pavZ = 22;
+          const pavY = this.getTerrainHeight(pavX, pavZ);
+          // Wooden deck floor (5x5)
+          for (let dx = -2; dx <= 2; dx++) {
+            for (let dz = -2; dz <= 2; dz++) {
+              setStructBlock(pavX + dx, pavY, pavZ + dz, BLOCK_DEFS.WOOD_PLANKS);
+              for (let fy = pavY - 1; fy >= pavY - 3; fy--) {
+                const b = this.getBlock(pavX + dx, fy, pavZ + dz);
+                if (b === BLOCK_DEFS.AIR || b === BLOCK_DEFS.WATER) {
+                  setStructBlock(pavX + dx, fy, pavZ + dz, BLOCK_DEFS.STONE);
+                } else break;
+              }
+            }
+          }
+          // Low wooden railing along 3 sides (open towards lake side dx=-2)
+          for (let dz = -2; dz <= 2; dz++) setStructBlock(pavX + 2, pavY + 1, pavZ + dz, BLOCK_DEFS.WOOD_PLANKS);
+          for (let dx = -1; dx <= 1; dx++) {
+            setStructBlock(pavX + dx, pavY + 1, pavZ - 2, BLOCK_DEFS.WOOD_PLANKS);
+            setStructBlock(pavX + dx, pavY + 1, pavZ + 2, BLOCK_DEFS.WOOD_PLANKS);
+          }
+          // 4 Corner Pillars
+          [[-2, -2], [2, -2], [-2, 2], [2, 2]].forEach(([px, pz]) => {
+            for (let h = 1; h <= 4; h++) setStructBlock(pavX + px, pavY + h, pavZ + pz, BLOCK_DEFS.TORII_RED);
+          });
+          // Slate Roof with eaves
+          for (let dx = -3; dx <= 3; dx++) {
+            for (let dz = -3; dz <= 3; dz++) {
+              if (Math.abs(dx) === 3 || Math.abs(dz) === 3) {
+                setStructBlock(pavX + dx, pavY + 4, pavZ + dz, BLOCK_DEFS.ROOF_SLATE);
+              }
+            }
+          }
+          for (let dx = -2; dx <= 2; dx++) {
+            for (let dz = -2; dz <= 2; dz++) {
+              setStructBlock(pavX + dx, pavY + 5, pavZ + dz, BLOCK_DEFS.ROOF_SLATE);
+            }
+          }
+          for (let dx = -1; dx <= 1; dx++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              setStructBlock(pavX + dx, pavY + 6, pavZ + dz, BLOCK_DEFS.ROOF_SLATE);
+            }
+          }
+          setStructBlock(pavX, pavY + 7, pavZ, BLOCK_DEFS.ROOF_SLATE);
+          // Lantern in center ceiling
+          setStructBlock(pavX, pavY + 4, pavZ, BLOCK_DEFS.PAPER_LANTERN);
+          // Stone Lanterns at pavilion entrance
+          setStructBlock(pavX - 3, pavY, pavZ - 1, BLOCK_DEFS.STONE);
+          setStructBlock(pavX - 3, pavY + 1, pavZ - 1, BLOCK_DEFS.LANTERN);
+          setStructBlock(pavX - 3, pavY + 2, pavZ - 1, BLOCK_DEFS.ROOF_SLATE);
+          setStructBlock(pavX - 3, pavY, pavZ + 1, BLOCK_DEFS.STONE);
+          setStructBlock(pavX - 3, pavY + 1, pavZ + 1, BLOCK_DEFS.LANTERN);
+          setStructBlock(pavX - 3, pavY + 2, pavZ + 1, BLOCK_DEFS.ROOF_SLATE);
         }
       }
 
@@ -2746,6 +2975,43 @@
         this.tourTime = 0;
         this.activeSlot = 0;
 
+        // Cinematic Aerial Tour State & Systems
+        this.tourState = 'INACTIVE'; // 'INACTIVE' | 'ENTERING' | 'ACTIVE' | 'EXITING'
+        this.tourCurve = null;
+        this.tourCurveLength = 0;
+        this.tourT = 0;
+        this.tourActiveTimer = 0;
+        this.tourTransitionStartTime = 0;
+        this.tourExitStartTime = 0;
+        this.tourTransitionDuration = 1.8;
+        this.tourStartCamPos = new THREE.Vector3();
+        this.tourStartCamYaw = 0;
+        this.tourStartCamPitch = 0;
+        this.tourTargetEntryPos = new THREE.Vector3();
+        this.tourTargetEntryYaw = 0;
+        this.tourTargetEntryPitch = 0;
+        this.tourExitStartCamPos = new THREE.Vector3();
+        this.tourExitLandingPos = new THREE.Vector3();
+        this.tourExitTargetCamPos = new THREE.Vector3();
+        this.tourExitStartYaw = 0;
+        this.tourExitStartPitch = 0;
+        this.tourCurrentYaw = -2.2;
+        this.tourCurrentPitch = -0.28;
+        this.tourIsPaused = false;
+        this.tourTopViewActive = false;
+        this.tourSpeedLevels = [3.5, 6.5, 13.0];
+        this.tourSpeedLabels = ['⚡ Tốc Độ: Chậm (0.5x)', '⚡ Tốc Độ: Chuẩn (1x)', '⚡ Tốc Độ: Nhanh (2x)'];
+        this.tourSpeedIndex = 1; // Default: Normal (1x)
+        this.tourSteerOffset = new THREE.Vector3();
+        this.tourLastSteerTime = 0;
+        this.tourSteerUp = false;
+        this.tourSteerDown = false;
+        this.userAltitudeOffset = 0;
+        this.currentAltitudeOffset = 0;
+        this.userLookYawOffset = 0;
+        this.userLookPitchOffset = 0;
+        this.isUserLooking = false;
+
         this.player = {
           pos: new THREE.Vector3(-2.5, 13.0, 5.5),
           vel: new THREE.Vector3(),
@@ -3169,10 +3435,56 @@
         });
 
         document.getElementById('btn-tour').addEventListener('click', () => {
-          this.isCinematicTour = !this.isCinematicTour;
-          document.getElementById('btn-tour').classList.toggle('active', this.isCinematicTour);
-          this.showToast(this.isCinematicTour ? 'Bật Chế Độ Tham Quan Tự Động' : 'Đã Thoát Tham Quan');
+          this.toggleCinematicTour();
         });
+
+        // Tour HUD Interactive Controls
+        const btnTourPause = document.getElementById('btn-tour-pause');
+        if (btnTourPause) {
+          btnTourPause.addEventListener('click', () => {
+            this.tourIsPaused = !this.tourIsPaused;
+            btnTourPause.textContent = this.tourIsPaused ? '▶️ Tiếp Tục' : '⏸️ Tạm Dừng';
+            this.showToast(this.tourIsPaused ? 'Đã tạm dừng tham quan' : 'Đã tiếp tục tham quan');
+          });
+        }
+
+        const btnTourSpeed = document.getElementById('btn-tour-speed');
+        if (btnTourSpeed) {
+          btnTourSpeed.addEventListener('click', () => {
+            this.tourSpeedIndex = (this.tourSpeedIndex + 1) % this.tourSpeedLevels.length;
+            btnTourSpeed.textContent = this.tourSpeedLabels[this.tourSpeedIndex];
+            this.showToast(this.tourSpeedLabels[this.tourSpeedIndex]);
+          });
+        }
+
+        const btnTourTopview = document.getElementById('btn-tour-topview');
+        if (btnTourTopview) {
+          btnTourTopview.addEventListener('click', () => {
+            this.tourTopViewActive = !this.tourTopViewActive;
+            btnTourTopview.classList.toggle('active', this.tourTopViewActive);
+            this.showToast(this.tourTopViewActive ? 'Góc nhìn thẳng từ trên xuống' : 'Góc nhìn tham quan chuẩn');
+          });
+        }
+
+        const btnTourExit = document.getElementById('btn-tour-exit');
+        if (btnTourExit) {
+          btnTourExit.addEventListener('click', () => {
+            this.exitCinematicTour();
+          });
+        }
+
+        const bindPress = (elId, onDown, onUp) => {
+          const el = document.getElementById(elId);
+          if (!el) return;
+          el.addEventListener('mousedown', (e) => { e.preventDefault(); onDown(); });
+          el.addEventListener('mouseup', (e) => { e.preventDefault(); onUp(); });
+          el.addEventListener('mouseleave', (e) => { onUp(); });
+          el.addEventListener('touchstart', (e) => { e.preventDefault(); onDown(); }, { passive: false });
+          el.addEventListener('touchend', (e) => { e.preventDefault(); onUp(); }, { passive: false });
+          el.addEventListener('touchcancel', (e) => { e.preventDefault(); onUp(); }, { passive: false });
+        };
+        bindPress('btn-tour-up', () => { this.tourSteerUp = true; }, () => { this.tourSteerUp = false; });
+        bindPress('btn-tour-down', () => { this.tourSteerDown = true; }, () => { this.tourSteerDown = false; });
 
         document.getElementById('btn-cam').addEventListener('click', () => {
           this.isThirdPerson = !this.isThirdPerson;
@@ -3232,6 +3544,15 @@
         window.addEventListener('keydown', (e) => {
           this.inputKeys[e.code] = true;
 
+          if (this.isCinematicTour) {
+            if (e.code === 'Space') {
+              e.preventDefault();
+              const pBtn = document.getElementById('btn-tour-pause');
+              if (pBtn) pBtn.click();
+              return;
+            }
+          }
+
           if (e.code >= 'Digit1' && e.code <= 'Digit9') {
             this.selectSlot(parseInt(e.code.replace('Digit', '')) - 1);
           } else if (e.code === 'KeyF') {
@@ -3239,9 +3560,7 @@
             document.getElementById('btn-fly').textContent = this.isFlyMode ? '🕊️ Bay: BẬT' : '🕊️ Bay: TẮT';
             this.showToast(this.isFlyMode ? 'Chế độ bay: BẬT' : 'Chế độ bay: TẮT');
           } else if (e.code === 'KeyC') {
-            this.isCinematicTour = !this.isCinematicTour;
-            document.getElementById('btn-tour').classList.toggle('active', this.isCinematicTour);
-            this.showToast(this.isCinematicTour ? 'Bật Chế Độ Tham Quan' : 'Thoát Tham Quan');
+            this.toggleCinematicTour();
           } else if (e.code === 'KeyV') {
             this.isThirdPerson = !this.isThirdPerson;
             document.getElementById('btn-cam').classList.toggle('active', this.isThirdPerson);
@@ -3254,7 +3573,11 @@
             if (this.isDebugOverlayVisible) this.updateDebugOverlay();
             this.showToast(this.isDebugOverlayVisible ? 'Bật Debug Overlay (F3)' : 'Tắt Debug Overlay');
           } else if (e.code === 'Escape') {
-            this.togglePauseMenu();
+            if (this.isCinematicTour) {
+              this.exitCinematicTour();
+            } else {
+              this.togglePauseMenu();
+            }
           }
         });
 
@@ -3263,11 +3586,17 @@
         });
 
         window.addEventListener('wheel', (e) => {
+          if (this.isCinematicTour) {
+            this.userAltitudeOffset -= Math.sign(e.deltaY) * 2.5;
+            this.userAltitudeOffset = Math.max(-15, Math.min(35, this.userAltitudeOffset));
+            return;
+          }
           if (e.deltaY > 0) this.selectSlot(this.activeSlot + 1);
           else this.selectSlot(this.activeSlot - 1);
         }, { passive: true });
 
         this.viewport.addEventListener('click', () => {
+          if (this.isCinematicTour) return;
           if (!document.getElementById('pause-menu').classList.contains('visible') &&
               document.getElementById('welcome-screen').classList.contains('hidden')) {
             this.requestPointerLock();
@@ -3278,14 +3607,101 @@
           this.isLocked = (document.pointerLockElement === this.viewport);
         });
 
-        // Smooth mouse look targets (no instant jitter)
+        let isTourDragging = false;
+        let lastDragX = 0, lastDragY = 0;
+
+        this.viewport.addEventListener('mousedown', (e) => {
+          if (!this.isCinematicTour) return;
+          if (e.button === 0) {
+            isTourDragging = true;
+            lastDragX = e.clientX;
+            lastDragY = e.clientY;
+            this.isUserLooking = true;
+          }
+        });
+
+        // Smooth mouse look targets (walking) and mouse drag look (aerial tour)
         window.addEventListener('mousemove', (e) => {
           if (this.isLocked && !this.isCinematicTour) {
             this.targetYaw -= e.movementX * 0.0022;
             this.targetPitch -= e.movementY * 0.0022;
             this.targetPitch = Math.max(-Math.PI / 2.1, Math.min(Math.PI / 2.1, this.targetPitch));
+          } else if (this.isCinematicTour && isTourDragging) {
+            const dx = e.clientX - lastDragX;
+            const dy = e.clientY - lastDragY;
+            lastDragX = e.clientX;
+            lastDragY = e.clientY;
+            this.userLookYawOffset -= dx * 0.0035;
+            this.userLookPitchOffset -= dy * 0.0035;
+            this.userLookPitchOffset = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, this.userLookPitchOffset));
+            this.isUserLooking = true;
           }
         });
+
+        window.addEventListener('mouseup', () => {
+          if (this.isCinematicTour && isTourDragging) {
+            isTourDragging = false;
+            this.isUserLooking = false;
+          }
+        });
+
+        // Mobile touch swipe look & pinch zoom for tour
+        let tourTouchId = null;
+        let lastTouchX = 0, lastTouchY = 0;
+        let tourPinchDist = null;
+
+        this.viewport.addEventListener('touchstart', (e) => {
+          if (!this.isCinematicTour) return;
+          if (e.touches.length === 1) {
+            const t = e.touches[0];
+            tourTouchId = t.identifier;
+            lastTouchX = t.clientX;
+            lastTouchY = t.clientY;
+            this.isUserLooking = true;
+          } else if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            tourPinchDist = Math.hypot(dx, dy);
+          }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+          if (!this.isCinematicTour) return;
+          if (e.touches.length === 2 && tourPinchDist !== null) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const curDist = Math.hypot(dx, dy);
+            const delta = curDist - tourPinchDist;
+            tourPinchDist = curDist;
+            this.userAltitudeOffset -= delta * 0.08;
+            this.userAltitudeOffset = Math.max(-15, Math.min(35, this.userAltitudeOffset));
+            return;
+          }
+          if (e.touches.length === 1) {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              const t = e.changedTouches[i];
+              if (t.identifier === tourTouchId) {
+                const dx = t.clientX - lastTouchX;
+                const dy = t.clientY - lastTouchY;
+                lastTouchX = t.clientX;
+                lastTouchY = t.clientY;
+                this.userLookYawOffset -= dx * 0.005;
+                this.userLookPitchOffset -= dy * 0.005;
+                this.userLookPitchOffset = Math.max(-Math.PI * 0.45, Math.min(Math.PI * 0.45, this.userLookPitchOffset));
+                this.isUserLooking = true;
+              }
+            }
+          }
+        }, { passive: false });
+
+        const endTourTouch = () => {
+          if (!this.isCinematicTour) return;
+          tourTouchId = null;
+          tourPinchDist = null;
+          this.isUserLooking = false;
+        };
+        window.addEventListener('touchend', endTourTouch);
+        window.addEventListener('touchcancel', endTourTouch);
 
         window.addEventListener('mousedown', (e) => {
           if (!this.isLocked || this.isCinematicTour) return;
@@ -3673,25 +4089,400 @@
         return false;
       }
 
-      updateCinematicTour(dt) {
-        this.tourTime += dt * 0.18;
-        const waypoints = [
-          new THREE.Vector3(2, 16, -24),
-          new THREE.Vector3(8, 14, -6),
-          new THREE.Vector3(8, 11, 8),
-          new THREE.Vector3(-14, 10, 6),
-          new THREE.Vector3(-14, 11, 18),
-          new THREE.Vector3(-4, 15, 4)
+      initTourPath() {
+        // Aerial circuit circling the sanctuary and all key landmarks:
+        // Torii gate, cherry blossom groves, lake, arched wooden bridge, lakeside pavilion.
+        const waypointsDef = [
+          { x: 12,  z: 22,  clearance: 34 }, // South-East overview vista
+          { x: 8,   z: 8,   clearance: 25 }, // Red Torii Gate landmark
+          { x: 20,  z: -8,  clearance: 28 }, // East Cherry Blossom Grove hillside
+          { x: 4,   z: -26, clearance: 38 }, // North Grand Panoramic overview
+          { x: -16, z: -22, clearance: 28 }, // North-West hillside & weeping cherry trees
+          { x: -26, z: -2,  clearance: 30 }, // West Lake Shore
+          { x: -14, z: 12,  clearance: 25 }, // Arched Wooden Footbridge & Lake Center
+          { x: -4,  z: 22,  clearance: 25 }, // Lakeside Pavilion landmark
+          { x: 4,   z: 28,  clearance: 32 }  // South Shore sweep curving back to start
         ];
 
-        const loopT = this.tourTime % waypoints.length;
-        const idx = Math.floor(loopT);
-        const nextIdx = (idx + 1) % waypoints.length;
-        const alpha = loopT - idx;
+        // Ensure chunks along path are generated and decorated
+        waypointsDef.forEach(wp => {
+          this.world.getHighestSolidY(wp.x, wp.z);
+        });
 
-        this.player.pos.lerpVectors(waypoints[idx], waypoints[nextIdx], alpha);
-        this.camera.position.copy(this.player.pos);
-        this.camera.lookAt(-10, 8, 12);
+        const points = waypointsDef.map(wp => {
+          const groundY = this.world.getHighestSolidY(wp.x, wp.z);
+          return new THREE.Vector3(wp.x, groundY + wp.clearance, wp.z);
+        });
+
+        // Smooth closed Catmull-Rom 3D curve
+        this.tourCurve = new THREE.CatmullRomCurve3(points, true, 'centripetal', 0.5);
+        this.tourCurveLength = this.tourCurve.getLength();
+      }
+
+      startCinematicTour() {
+        if (this.isCinematicTour && this.tourState !== 'EXITING') return;
+
+        // Release pointer lock so cursor is free for tour controls and dragging
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+
+        if (!this.tourCurve) {
+          this.initTourPath();
+        }
+
+        this.isCinematicTour = true;
+        this.tourState = 'ENTERING';
+        this.tourIsPaused = false;
+        this.tourTopViewActive = false;
+        this.tourActiveTimer = 0.0;
+        this.tourTransitionStartTime = performance.now();
+        this.tourTransitionDuration = 1.8;
+
+        this.tourSteerOffset.set(0, 0, 0);
+        this.userAltitudeOffset = 0.0;
+        this.currentAltitudeOffset = 0.0;
+        this.userLookYawOffset = 0.0;
+        this.userLookPitchOffset = 0.0;
+        this.isUserLooking = false;
+
+        // Smooth glide start from player's current position up to nearest tour spline point
+        this.tourStartCamPos.copy(this.camera.position);
+        this.tourStartCamYaw = this.player.yaw;
+        this.tourStartCamPitch = this.player.pitch;
+
+        let bestT = 0;
+        let bestDist = Infinity;
+        for (let i = 0; i < 80; i++) {
+          const t = i / 80;
+          const pt = this.tourCurve.getPointAt(t);
+          const d = pt.distanceTo(this.tourStartCamPos);
+          if (d < bestDist) {
+            bestDist = d;
+            bestT = t;
+          }
+        }
+        this.tourT = bestT;
+        this.tourTargetEntryPos = this.tourCurve.getPointAt(bestT);
+
+        const tangent = this.tourCurve.getTangentAt(bestT).normalize();
+        this.tourTargetEntryYaw = Math.atan2(-tangent.x, -tangent.z);
+        this.tourTargetEntryPitch = -0.28;
+
+        this.tourCurrentYaw = this.player.yaw;
+        this.tourCurrentPitch = this.player.pitch;
+
+        // Update UI
+        const btnTour = document.getElementById('btn-tour');
+        if (btnTour) btnTour.classList.add('active');
+        const tourHud = document.getElementById('tour-hud');
+        if (tourHud) tourHud.classList.remove('hidden');
+        const hotbar = document.getElementById('hotbar');
+        if (hotbar) hotbar.style.display = 'none';
+        const crosshair = document.getElementById('crosshair');
+        if (crosshair) crosshair.style.display = 'none';
+        const topviewBtn = document.getElementById('btn-tour-topview');
+        if (topviewBtn) topviewBtn.classList.remove('active');
+        const pauseBtn = document.getElementById('btn-tour-pause');
+        if (pauseBtn) pauseBtn.textContent = '⏸️ Tạm Dừng';
+
+        this.showToast('Bắt đầu chuyến tham quan trên không');
+      }
+
+      exitCinematicTour() {
+        if (!this.isCinematicTour || this.tourState === 'EXITING') return;
+
+        this.tourState = 'EXITING';
+        this.tourExitStartTime = performance.now();
+        this.tourTransitionDuration = 1.5;
+
+        this.tourExitStartCamPos.copy(this.camera.position);
+        this.tourExitStartYaw = this.tourCurrentYaw;
+        this.tourExitStartPitch = this.tourCurrentPitch;
+
+        // Find safe solid ground directly below current camera position
+        const safeSpot = this.findSafeLandingSpot(this.tourExitStartCamPos.x, this.tourExitStartCamPos.z);
+        this.tourExitLandingPos.set(safeSpot.x, safeSpot.y, safeSpot.z);
+
+        // Target camera position: standing at player eye level
+        this.tourExitTargetCamPos.set(
+          safeSpot.x,
+          safeSpot.y + this.player.height * 0.9,
+          safeSpot.z
+        );
+
+        this.showToast('Đang hạ cánh an toàn...');
+      }
+
+      toggleCinematicTour() {
+        if (this.isCinematicTour) {
+          this.exitCinematicTour();
+        } else {
+          this.startCinematicTour();
+        }
+      }
+
+      findSafeLandingSpot(targetX, targetZ) {
+        const bx = Math.round(targetX);
+        const bz = Math.round(targetZ);
+        let best = null;
+        let minD = Infinity;
+
+        // Search spiral around landing point to guarantee dry, solid ground
+        for (let r = 0; r <= 8; r++) {
+          for (let dz = -r; dz <= r; dz++) {
+            for (let dx = -r; dx <= r; dx++) {
+              if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+              const wx = bx + dx;
+              const wz = bz + dz;
+              const groundY = this.world.getHighestSolidY(wx, wz);
+              const b = this.world.getBlock(wx, groundY - 1, wz);
+              if (this.world.isCollidable(b) && b !== BLOCK_DEFS.WATER) {
+                const above1 = this.world.getBlock(wx, groundY, wz);
+                const above2 = this.world.getBlock(wx, groundY + 1, wz);
+                if (above1 === BLOCK_DEFS.AIR && above2 === BLOCK_DEFS.AIR) {
+                  const d = dx * dx + dz * dz;
+                  if (d < minD) {
+                    minD = d;
+                    best = { x: wx + 0.5, y: groundY, z: wz + 0.5 };
+                  }
+                }
+              }
+            }
+          }
+          if (best) break;
+        }
+        if (!best) {
+          const fallbackY = this.world.getHighestSolidY(targetX, targetZ);
+          best = { x: targetX, y: fallbackY, z: targetZ };
+        }
+        return best;
+      }
+
+      applyCameraOrientation(yaw, pitch) {
+        const lookDist = 25.0;
+        const lx = this.camera.position.x - Math.sin(yaw) * Math.cos(pitch) * lookDist;
+        const ly = this.camera.position.y + Math.sin(pitch) * lookDist;
+        const lz = this.camera.position.z - Math.cos(yaw) * Math.cos(pitch) * lookDist;
+        this.camera.lookAt(lx, ly, lz);
+      }
+
+      enforceCameraGroundSafety() {
+        const p = this.camera.position;
+        const groundY = this.world.getMaxSolidYInRadius(p.x, p.z, 1.2);
+        const minAllowedY = groundY + 5.0;
+        if (p.y < minAllowedY) p.y = minAllowedY;
+        const inside = this.world.getBlock(Math.floor(p.x), Math.floor(p.y), Math.floor(p.z));
+        if (this.world.isCollidable(inside)) {
+          p.y = Math.floor(p.y) + 1.5;
+        }
+      }
+
+      updateCinematicTour(dt) {
+        if (!this.tourCurve) {
+          this.initTourPath();
+        }
+
+        // =========================================================================
+        // STATE 1: ENTERING (Glide smoothly from player position up into tour path)
+        // =========================================================================
+        if (this.tourState === 'ENTERING') {
+          const elapsed = (performance.now() - this.tourTransitionStartTime) / 1000;
+          const p = Math.min(1.0, elapsed / this.tourTransitionDuration);
+          const ease = p * p * (3.0 - 2.0 * p); // smoothstep easing
+
+          this.camera.position.lerpVectors(this.tourStartCamPos, this.tourTargetEntryPos, ease);
+
+          // Interpolate yaw and pitch smoothly
+          let diffYaw = ((this.tourTargetEntryYaw - this.tourStartCamYaw + Math.PI) % (Math.PI * 2));
+          if (diffYaw < 0) diffYaw += Math.PI * 2;
+          diffYaw -= Math.PI;
+          this.tourCurrentYaw = this.tourStartCamYaw + diffYaw * ease;
+          this.tourCurrentPitch = THREE.MathUtils.lerp(this.tourStartCamPitch, this.tourTargetEntryPitch, ease);
+
+          this.applyCameraOrientation(this.tourCurrentYaw, this.tourCurrentPitch);
+          this.enforceCameraGroundSafety();
+
+          if (p >= 1.0) {
+            this.tourState = 'ACTIVE';
+            this.tourActiveTimer = 0.0;
+          }
+          return;
+        }
+
+        // =========================================================================
+        // STATE 2: EXITING (Glide smoothly down and land player safely on ground)
+        // =========================================================================
+        if (this.tourState === 'EXITING') {
+          const elapsed = (performance.now() - this.tourExitStartTime) / 1000;
+          const p = Math.min(1.0, elapsed / this.tourTransitionDuration);
+          const ease = p * p * (3.0 - 2.0 * p);
+
+          this.camera.position.lerpVectors(this.tourExitStartCamPos, this.tourExitTargetCamPos, ease);
+
+          // Ease pitch towards eye-level (0)
+          this.tourCurrentPitch = THREE.MathUtils.lerp(this.tourExitStartPitch, 0.0, ease);
+          this.applyCameraOrientation(this.tourCurrentYaw, this.tourCurrentPitch);
+
+          if (p >= 1.0) {
+            // Settle player position on top of the solid block
+            this.player.pos.copy(this.tourExitLandingPos);
+            this.player.vel.set(0, 0, 0);
+            this.player.isGrounded = true;
+            this.player.yaw = this.targetYaw = this.tourCurrentYaw;
+            this.player.pitch = this.targetPitch = 0.0;
+
+            this.isCinematicTour = false;
+            this.tourState = 'INACTIVE';
+
+            // Restore HUD
+            const btnTour = document.getElementById('btn-tour');
+            if (btnTour) btnTour.classList.remove('active');
+            const tourHud = document.getElementById('tour-hud');
+            if (tourHud) tourHud.classList.add('hidden');
+            const hotbar = document.getElementById('hotbar');
+            if (hotbar) hotbar.style.display = 'flex';
+            const crosshair = document.getElementById('crosshair');
+            if (crosshair) crosshair.style.display = 'block';
+
+            this.showToast('Đã thoát tham quan. Chúc bạn dạo chơi vui vẻ!');
+          }
+          return;
+        }
+
+        // =========================================================================
+        // STATE 3: ACTIVE (Aerial flight along spline with user interaction)
+        // =========================================================================
+        if (this.tourState === 'ACTIVE') {
+          this.tourActiveTimer += dt;
+
+          // 1. Path progression with ease-in at start
+          if (!this.tourIsPaused) {
+            const baseSpeed = this.tourSpeedLevels[this.tourSpeedIndex];
+            const startEase = Math.min(1.0, this.tourActiveTimer / 2.5);
+            const easeFactor = startEase * startEase * (3.0 - 2.0 * startEase);
+            const currentSpeed = baseSpeed * easeFactor;
+
+            this.tourT = (this.tourT + (currentSpeed * dt) / this.tourCurveLength) % 1.0;
+          }
+
+          // 2. Base point on spline
+          const basePoint = this.tourCurve.getPointAt(this.tourT);
+          const tangent = this.tourCurve.getTangentAt(this.tourT).normalize();
+
+          // 3. Handle free user steering (WASD, Arrows, Q/E, Mobile joystick & buttons)
+          const isSteering = this.inputKeys['KeyW'] || this.inputKeys['KeyS'] ||
+                             this.inputKeys['KeyA'] || this.inputKeys['KeyD'] ||
+                             this.inputKeys['ArrowUp'] || this.inputKeys['ArrowDown'] ||
+                             this.inputKeys['ArrowLeft'] || this.inputKeys['ArrowRight'] ||
+                             this.inputKeys['KeyQ'] || this.inputKeys['KeyE'] ||
+                             this.tourSteerUp || this.tourSteerDown;
+
+          if (isSteering) {
+            this.tourLastSteerTime = performance.now();
+            const forwardX = -Math.sin(this.tourCurrentYaw);
+            const forwardZ = -Math.cos(this.tourCurrentYaw);
+            const rightX = Math.cos(this.tourCurrentYaw);
+            const rightZ = -Math.sin(this.tourCurrentYaw);
+
+            const steerSpeed = 14.0;
+            if (this.inputKeys['KeyW'] || this.inputKeys['ArrowUp']) {
+              this.tourSteerOffset.x += forwardX * steerSpeed * dt;
+              this.tourSteerOffset.z += forwardZ * steerSpeed * dt;
+            }
+            if (this.inputKeys['KeyS'] || this.inputKeys['ArrowDown']) {
+              this.tourSteerOffset.x -= forwardX * steerSpeed * dt;
+              this.tourSteerOffset.z -= forwardZ * steerSpeed * dt;
+            }
+            if (this.inputKeys['KeyA'] || this.inputKeys['ArrowLeft']) {
+              this.tourSteerOffset.x -= rightX * steerSpeed * dt;
+              this.tourSteerOffset.z -= rightZ * steerSpeed * dt;
+            }
+            if (this.inputKeys['KeyD'] || this.inputKeys['ArrowRight']) {
+              this.tourSteerOffset.x += rightX * steerSpeed * dt;
+              this.tourSteerOffset.z += rightZ * steerSpeed * dt;
+            }
+            if (this.inputKeys['KeyE'] || this.tourSteerUp) {
+              this.tourSteerOffset.y += steerSpeed * dt;
+            }
+            if (this.inputKeys['KeyQ'] || this.tourSteerDown) {
+              this.tourSteerOffset.y -= steerSpeed * dt;
+            }
+
+            // Clamp max steer offset distance from path to 50 blocks
+            const horizDist = Math.hypot(this.tourSteerOffset.x, this.tourSteerOffset.z);
+            if (horizDist > 50.0) {
+              const scale = 50.0 / horizDist;
+              this.tourSteerOffset.x *= scale;
+              this.tourSteerOffset.z *= scale;
+            }
+            this.tourSteerOffset.y = Math.max(-25, Math.min(35, this.tourSteerOffset.y));
+          } else {
+            // Easing back to path after 3 seconds of steering inactivity
+            if (performance.now() - this.tourLastSteerTime > 3000) {
+              const returnFactor = 1.0 - Math.exp(-1.4 * dt);
+              this.tourSteerOffset.lerp(new THREE.Vector3(0, 0, 0), returnFactor);
+              if (this.tourSteerOffset.lengthSq() < 0.005) {
+                this.tourSteerOffset.set(0, 0, 0);
+              }
+            }
+          }
+
+          // 4. Smooth user zoom altitude offset
+          const targetExtraAlt = this.tourTopViewActive ? 14.0 : 0.0;
+          const totalTargetAlt = this.userAltitudeOffset + targetExtraAlt;
+          this.currentAltitudeOffset = THREE.MathUtils.lerp(
+            this.currentAltitudeOffset,
+            totalTargetAlt,
+            1.0 - Math.exp(-7.0 * dt)
+          );
+
+          // 5. Final camera position
+          const finalCamPos = basePoint.clone().add(this.tourSteerOffset);
+          finalCamPos.y += this.currentAltitudeOffset;
+
+          // 6. Enforce safe camera height every frame (Never below terrain height + 5 blocks or inside block)
+          const groundY = this.world.getMaxSolidYInRadius(finalCamPos.x, finalCamPos.z, 1.2);
+          const minAllowedY = groundY + 5.0;
+          if (finalCamPos.y < minAllowedY) {
+            finalCamPos.y = minAllowedY;
+          }
+          const insideBlock = this.world.getBlock(Math.floor(finalCamPos.x), Math.floor(finalCamPos.y), Math.floor(finalCamPos.z));
+          if (this.world.isCollidable(insideBlock)) {
+            finalCamPos.y = Math.floor(finalCamPos.y) + 1.5;
+          }
+
+          this.camera.position.copy(finalCamPos);
+
+          // Keep player ground position in sync below camera for audio & chunk loading
+          const safeBelowY = this.world.getHighestSolidY(finalCamPos.x, finalCamPos.z);
+          this.player.pos.set(finalCamPos.x, safeBelowY, finalCamPos.z);
+
+          // 7. Camera Look Direction (Smooth flight orientation + user drag offset)
+          let baseFlightYaw = Math.atan2(-tangent.x, -tangent.z);
+          let baseFlightPitch = this.tourTopViewActive ? (-Math.PI / 2 + 0.05) : -0.28;
+
+          // Ease user look offset back towards zero when not actively dragging
+          if (!this.isUserLooking) {
+            const easeFactor = 1.0 - Math.exp(-2.2 * dt);
+            this.userLookYawOffset = THREE.MathUtils.lerp(this.userLookYawOffset, 0.0, easeFactor);
+            this.userLookPitchOffset = THREE.MathUtils.lerp(this.userLookPitchOffset, 0.0, easeFactor);
+          }
+
+          let desiredYaw = baseFlightYaw + this.userLookYawOffset;
+          let desiredPitch = baseFlightPitch + this.userLookPitchOffset;
+          desiredPitch = Math.max(-Math.PI / 2.05, Math.min(Math.PI / 2.05, desiredPitch));
+
+          // Shortest angle wrap for yaw
+          let diffYaw = ((desiredYaw - this.tourCurrentYaw + Math.PI) % (Math.PI * 2));
+          if (diffYaw < 0) diffYaw += Math.PI * 2;
+          diffYaw -= Math.PI;
+          this.tourCurrentYaw += diffYaw * (1.0 - Math.exp(-6.0 * dt));
+
+          this.tourCurrentPitch = THREE.MathUtils.lerp(this.tourCurrentPitch, desiredPitch, 1.0 - Math.exp(-7.0 * dt));
+
+          this.applyCameraOrientation(this.tourCurrentYaw, this.tourCurrentPitch);
+        }
       }
 
       // =========================================================================
@@ -3776,8 +4567,9 @@
         ctx.fillStyle = '#1e1422';
         ctx.fillRect(0, 0, w, h);
 
-        const px = this.player.pos.x;
-        const pz = this.player.pos.z;
+        const px = this.isCinematicTour ? this.camera.position.x : this.player.pos.x;
+        const pz = this.isCinematicTour ? this.camera.position.z : this.player.pos.z;
+        const curYaw = this.isCinematicTour ? this.tourCurrentYaw : this.player.yaw;
         const range = 24;
         const scale = w / (range * 2);
 
@@ -3806,7 +4598,7 @@
 
         ctx.save();
         ctx.translate(w / 2, h / 2);
-        ctx.rotate(-this.player.yaw);
+        ctx.rotate(-curYaw);
         ctx.fillStyle = '#ff0055';
         ctx.beginPath();
         ctx.moveTo(0, -6);
@@ -3822,7 +4614,7 @@
         requestAnimationFrame(this.animate);
 
         // Clamp delta time to avoid physics/visual jumps after tab inactivity
-        const dt = Math.min(this.clock.getDelta(), 0.05);
+        const dt = Math.min(this.clock.getDelta(), 0.1);
 
         // 1. Update Wind System & Vertex Shaders
         this.wind.update(dt);
@@ -3854,12 +4646,14 @@
         this.blockParticles.update(dt);
 
         // 7. Dynamic Chunk Management & Streaming
-        const pcx = Math.floor(this.player.pos.x / CHUNK_SIZE);
-        const pcz = Math.floor(this.player.pos.z / CHUNK_SIZE);
+        const streamX = this.isCinematicTour ? this.camera.position.x : this.player.pos.x;
+        const streamZ = this.isCinematicTour ? this.camera.position.z : this.player.pos.z;
+        const pcx = Math.floor(streamX / CHUNK_SIZE);
+        const pcz = Math.floor(streamZ / CHUNK_SIZE);
         if (pcx !== this.lastChunkX || pcz !== this.lastChunkZ) {
           this.lastChunkX = pcx;
           this.lastChunkZ = pcz;
-          this.world.updateAround(this.player.pos.x, this.player.pos.z, 2);
+          this.world.updateAround(streamX, streamZ, this.isCinematicTour ? 3 : 2);
         }
 
         // Spread chunk meshing across frames: build at most 1 chunk per frame
@@ -3871,7 +4665,7 @@
         }
 
         // 8. Petal Particle Flutter
-        this.petals.update(dt, this.player.pos, this.wind);
+        this.petals.update(dt, this.isCinematicTour ? this.camera.position : this.player.pos, this.wind);
 
         // 9. Highlight Box on Look Target
         const target = this.getTargetBlock();
