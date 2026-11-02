@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Vườn Anh Đào • Sakura Sanctuary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Noto+Serif+JP:wght@300;400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --pink-blush: #fbcfe8;
+        --pink-primary: #f472b6;
+        --pink-deep: #db2777;
+        --purple-soft: #e9d5ff;
+        --purple-deep: #7e22ce;
+        --wood-brown: #78350f;
+        --wood-dark: #451a03;
+        --glass-bg: rgba(28, 18, 32, 0.55);
+        --glass-border: rgba(255, 255, 255, 0.18);
+        --glass-hover: rgba(255, 255, 255, 0.28);
+        --text-white: #fffdfa;
+        --text-muted: #e2e8f0;
+        --accent-glow: #f472b6;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0f0a14;
+        font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+        color: var(--text-white);
+      }
+
+      /* Fullscreen Canvas */
+      #garden-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        cursor: pointer;
+      }
+
+      /* Welcome Screen Overlay */
+      #welcome-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        background: radial-gradient(circle at center, rgba(35, 18, 42, 0.78) 0%, rgba(12, 6, 18, 0.94) 100%);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 24px;
+        transition: opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 1.2s;
+      }
+
+      #welcome-overlay.fade-out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .welcome-card {
+        background: rgba(45, 25, 52, 0.6);
+        border: 1px solid rgba(251, 207, 232, 0.28);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(244, 114, 182, 0.2);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-radius: 28px;
+        padding: 44px 52px;
+        max-width: 540px;
+        width: 90%;
+        animation: floatUp 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      @keyframes floatUp {
+        0% { opacity: 0; transform: translateY(30px) scale(0.96); }
+        100% { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .sakura-emblem {
+        font-size: 42px;
+        margin-bottom: 12px;
+        display: inline-block;
+        filter: drop-shadow(0 0 16px rgba(244, 114, 182, 0.8));
+        animation: emblemSway 3s ease-in-out infinite;
+      }
+
+      @keyframes emblemSway {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(10deg) scale(1.08); }
+      }
+
+      .welcome-title {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 42px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        background: linear-gradient(135deg, #ffffff 10%, #fbcfe8 60%, #f472b6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 6px;
+      }
+
+      .welcome-kanji {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 16px;
+        letter-spacing: 6px;
+        color: var(--purple-soft);
+        margin-bottom: 18px;
+        text-transform: uppercase;
+      }
+
+      .welcome-desc {
+        font-size: 15px;
+        line-height: 1.65;
+        color: #f1f5f9;
+        margin-bottom: 32px;
+        font-weight: 300;
+      }
+
+      .enter-btn {
+        background: linear-gradient(135deg, #ec4899 0%, #d946ef 50%, #a855f7 100%);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 40px;
+        padding: 16px 38px;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: 0 10px 30px rgba(236, 72, 153, 0.45);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      .enter-btn:hover {
+        transform: translateY(-2px) scale(1.03);
+        box-shadow: 0 14px 40px rgba(236, 72, 153, 0.65);
+      }
+
+      .enter-btn:active {
+        transform: translateY(1px) scale(0.98);
+      }
+
+      .welcome-hint {
+        margin-top: 24px;
+        font-size: 12.5px;
+        color: #cbd5e1;
+        letter-spacing: 0.5px;
+      }
+
+      /* Corner Control Toolbar */
+      #control-bar {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 30;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border-radius: 20px;
+        padding: 8px 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: opacity 0.5s ease, transform 0.5s ease;
+      }
+
+      #control-bar.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-10px);
+      }
+
+      /* Mood Switch Pills */
+      .mood-group {
+        display: flex;
+        background: rgba(0, 0, 0, 0.28);
+        border-radius: 30px;
+        padding: 3px;
+        gap: 2px;
+      }
+
+      .mood-pill {
+        background: transparent;
+        border: none;
+        color: #cbd5e1;
+        font-size: 12.5px;
+        font-weight: 500;
+        padding: 6px 14px;
+        border-radius: 24px;
+        cursor: pointer;
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .mood-pill:hover {
+        color: #ffffff;
+      }
+
+      .mood-pill.active {
+        background: linear-gradient(135deg, rgba(244, 114, 182, 0.4), rgba(192, 132, 252, 0.4));
+        border: 1px solid rgba(244, 114, 182, 0.5);
+        color: #ffffff;
+        box-shadow: 0 0 12px rgba(244, 114, 182, 0.3);
+      }
+
+      /* Control Divider */
+      .ctrl-divider {
+        width: 1px;
+        height: 22px;
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      /* Icon & Action Buttons */
+      .icon-btn {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 7px 11px;
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.25s ease;
+      }
+
+      .icon-btn:hover {
+        background: var(--glass-hover);
+        border-color: rgba(255, 255, 255, 0.35);
+      }
+
+      /* Animated Audio Equalizer Bars */
+      .audio-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 12px;
+      }
+
+      .audio-bar {
+        width: 2.5px;
+        background: #f472b6;
+        border-radius: 2px;
+        height: 3px;
+        transition: height 0.2s;
+      }
+
+      .playing .audio-bar:nth-child(1) { animation: barPlay 0.8s infinite ease-in-out; }
+      .playing .audio-bar:nth-child(2) { animation: barPlay 0.5s infinite ease-in-out 0.2s; }
+      .playing .audio-bar:nth-child(3) { animation: barPlay 0.9s infinite ease-in-out 0.4s; }
+
+      @keyframes barPlay {
+        0%, 100% { height: 3px; }
+        50% { height: 12px; }
+      }
+
+      /* Sliders */
+      .volume-box, .petal-box {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: #cbd5e1;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 70px;
+        height: 4px;
+        border-radius: 2px;
+        background: rgba(255, 255, 255, 0.22);
+        outline: none;
+        cursor: pointer;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: #f472b6;
+        box-shadow: 0 0 8px #f472b6;
+        cursor: pointer;
+        transition: transform 0.15s;
+      }
+
+      input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.25);
+      }
+
+      /* FPS Badge */
+      .fps-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        color: #cbd5e1;
+        padding: 4px 8px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.25);
+      }
+
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #4ade80;
+        box-shadow: 0 0 8px #4ade80;
+      }
+
+      /* Haiku Box (Màn thơ Haiku mờ dần) */
+      #haiku-box {
+        position: fixed;
+        bottom: 38px;
+        left: 50%;
+        transform: translateX(-50%) translateY(14px);
+        z-index: 25;
+        background: rgba(24, 14, 28, 0.65);
+        border: 1px solid rgba(251, 207, 232, 0.22);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 0 30px rgba(244, 114, 182, 0.15);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 22px;
+        padding: 20px 36px;
+        text-align: center;
+        max-width: 480px;
+        width: 86%;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 1.8s ease, transform 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      #haiku-box.visible {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+        pointer-events: auto;
+      }
+
+      .haiku-flower-icon {
+        font-size: 18px;
+        color: #f472b6;
+        margin-bottom: 6px;
+      }
+
+      #haiku-content {
+        font-family: 'Playfair Display', Georgia, serif;
+        font-size: 17px;
+        font-style: italic;
+        line-height: 1.7;
+        color: #fff1f2;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+      }
+
+      #haiku-japanese {
+        font-family: 'Noto Serif JP', serif;
+        font-size: 13.5px;
+        color: #fbcfe8;
+        letter-spacing: 2px;
+        margin-bottom: 6px;
+      }
+
+      #haiku-author {
+        font-size: 12px;
+        color: #cbd5e1;
+        letter-spacing: 1px;
+      }
+
+      /* Subtle corner guide */
+      #hint-tag {
+        position: fixed;
+        bottom: 16px;
+        right: 18px;
+        z-index: 20;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.45);
+        pointer-events: none;
+        letter-spacing: 0.5px;
+      }
+
+      /* Mobile responsiveness */
+      @media (max-width: 768px) {
+        #control-bar {
+          top: 10px;
+          right: 10px;
+          left: 10px;
+          padding: 6px 10px;
+          border-radius: 16px;
+          gap: 8px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          justify-content: flex-start;
+          white-space: nowrap;
+        }
+
+        #control-bar::-webkit-scrollbar {
+          display: none;
+        }
+
+        .volume-box input[type="range"],
+        .petal-box input[type="range"] {
+          width: 48px;
+        }
+
+        .welcome-card {
+          padding: 28px 20px;
+        }
+
+        .welcome-title {
+          font-size: 30px;
+        }
+
+        #haiku-box {
+          bottom: 24px;
+          padding: 14px 18px;
+        }
+
+        #haiku-content {
+          font-size: 15px;
+        }
+
+        #hint-tag {
+          display: none; /* Avoid overlapping haiku on small phones */
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Procedural 2D Scenic Canvas -->
+    <canvas id="garden-canvas"></canvas>
+
+    <!-- Welcome / Start Overlay Screen -->
+    <div id="welcome-overlay">
+      <div class="welcome-card">
+        <div class="sakura-emblem">🌸</div>
+        <h1 class="welcome-title">Vườn Anh Đào</h1>
+        <div class="welcome-kanji">桜の庭 • SAKURA SANCTUARY</div>
+        <p class="welcome-desc">
+          Thả hồn giữa ngàn cánh hoa rơi chao lượn trong gió xuân.<br />
+          Lắng nghe tiếng chim hót, tiếng nước chảy và giai điệu đàn koto êm đềm.
+        </p>
+        <button id="enter-garden-btn" class="enter-btn">
+          <span>🌸 Bước Vào Vườn</span>
+        </button>
+        <div class="welcome-hint">
+          🎧 Nhấp chuột để mở toàn bộ âm thanh phong cảnh &amp; nhạc thiền Koto
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Glassmorphic Control Toolbar -->
+    <div id="control-bar" class="hidden">
+      <!-- Day / Sunset / Night mode pills -->
+      <div class="mood-group">
+        <button class="mood-pill active" data-mood="day" title="Chế độ Ban Ngày">
+          ☀️ <span>Ngày</span>
+        </button>
+        <button class="mood-pill" data-mood="sunset" title="Chế độ Hoàng Hôn">
+          🌇 <span>Hoàng hôn</span>
+        </button>
+        <button class="mood-pill" data-mood="night" title="Chế độ Ban Đêm">
+          🌙 <span>Đêm</span>
+        </button>
+      </div>
+
+      <div class="ctrl-divider"></div>
+
+      <!-- Sound Toggle & Volume -->
+      <button id="audio-toggle-btn" class="icon-btn playing" title="Bật / Tắt Âm Thanh">
+        <div class="audio-bars">
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+          <div class="audio-bar"></div>
+        </div>
+      </button>
+
+      <div class="volume-box">
+        <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" title="Âm lượng" />
+      </div>
+
+      <div class="ctrl-divider"></div>
+
+      <!-- Petal Density Slider -->
+      <div class="petal-box" title="Mật độ cánh hoa anh đào">
+        <span>🌸</span>
+        <input type="range" id="petal-slider" min="40" max="320" step="10" value="140" />
+        <span id="petal-val">140</span>
+      </div>
+
+      <!-- Trigger Wind Gust Button -->
+      <button id="wind-gust-btn" class="icon-btn" title="Tạo một đợt gió thổi mạnh">
+        🍃 <span>Gió</span>
+      </button>
+
+      <!-- Fullscreen Toggle -->
+      <button id="fullscreen-btn" class="icon-btn" title="Chế độ toàn màn hình">
+        ⛶
+      </button>
+
+      <!-- FPS Counter -->
+      <div class="fps-badge">
+        <div class="badge-dot"></div>
+        <span id="fps-display">60 FPS</span>
+      </div>
+    </div>
+
+    <!-- Floating Haiku Poem Box (Mỗi vài chục giây hiện lên và mờ dần) -->
+    <div id="haiku-box">
+      <div class="haiku-flower-icon">🌸</div>
+      <div id="haiku-content">
+        <div>Hoa đào rụng rơi</div>
+        <div>Như tuyết bay trong gió sớm</div>
+        <div>Vấn vương lòng người</div>
+      </div>
+      <div id="haiku-japanese">花散りて また咲く春を 待つ心</div>
+      <div id="haiku-author">— Yosa Buson (与謝蕪村)</div>
+    </div>
+
+    <!-- Interactive Hint in bottom corner -->
+    <div id="hint-tag">
+      Di chuột / Chạm kéo tạo gió • Nhấp chuột / Chạm bung cánh hoa &amp; chuông gió
+    </div>
+
+    <!-- Main Module Script -->
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
