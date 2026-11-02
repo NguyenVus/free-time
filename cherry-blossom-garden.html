@@ -968,6 +968,7 @@
     </div>
     <div class="hud-btn-group">
       <button class="hud-btn" id="btn-online" title="Người chơi trong vườn">👥 Một mình</button>
+      <button class="hud-btn" id="btn-music" title="Đổi bản nhạc (phím M)">🥁 Nhạc: Lễ Hội</button>
       <button class="hud-btn" id="btn-audio" title="Bật/Tắt Âm Thanh">🔊 Nhạc: BẬT</button>
       <button class="hud-btn" id="btn-tour" title="Chuyến Tham Quan Tự Động">🎥 Tham Quan</button>
       <button class="hud-btn" id="btn-cam" title="Đổi Góc Nhìn 1st/3rd Person">👤 Góc Nhìn</button>
@@ -1692,6 +1693,9 @@
     ];
     const HOUSE_WALL_HEIGHT = 3;
     const WATER_LEVEL = 6;
+    const EDITS_STORAGE_KEY = 'cherry_blossom_voxel_edits';
+    const EDIT_TIMES_STORAGE_KEY = 'cherry_blossom_voxel_edit_times';
+    const LAST_RESET_STORAGE_KEY = 'cherry_blossom_voxel_last_reset';
     const RIVER_BANK_WIDTH = 9;
     const RIVER_DEPTH = 3;
     const RIVER_SAND_WIDTH = 3;
@@ -1770,6 +1774,9 @@
         this.chunks = new Map();
         this.placedLanterns = new Map();
         this.modifiedBlocks = new Map();
+        this.editTimes = new Map(); // when each edit was made: with two players, the newest one wins
+        this.lastResetAt = 0;
+        this.dirtyChunks = new Set();
         this.decoratedChunks = new Set();
         this.streamTasks = [];
         this.lastChunk = null;
@@ -1913,13 +1920,18 @@
 
       loadSavedWorld() {
         try {
-          const raw = localStorage.getItem('cherry_blossom_voxel_edits');
+          const raw = localStorage.getItem(EDITS_STORAGE_KEY);
           if (raw) {
             const data = JSON.parse(raw);
             for (const [k, v] of Object.entries(data)) {
               this.modifiedBlocks.set(k, v);
             }
           }
+          const times = JSON.parse(localStorage.getItem(EDIT_TIMES_STORAGE_KEY) || '{}');
+          for (const [k, v] of Object.entries(times)) {
+            this.editTimes.set(k, v);
+          }
+          this.lastResetAt = Number(localStorage.getItem(LAST_RESET_STORAGE_KEY)) || 0;
         } catch (e) {
           console.warn('Could not load saved edits:', e);
         }
@@ -1927,17 +1939,21 @@
 
       saveEdits() {
         try {
-          const obj = {};
-          this.modifiedBlocks.forEach((v, k) => { obj[k] = v; });
-          localStorage.setItem('cherry_blossom_voxel_edits', JSON.stringify(obj));
+          localStorage.setItem(EDITS_STORAGE_KEY, JSON.stringify(Object.fromEntries(this.modifiedBlocks)));
+          localStorage.setItem(EDIT_TIMES_STORAGE_KEY, JSON.stringify(Object.fromEntries(this.editTimes)));
         } catch (e) {
           console.warn('Could not save edits:', e);
         }
       }
 
-      resetWorld() {
+      resetWorld(time) {
         this.modifiedBlocks.clear();
-        localStorage.removeItem('cherry_blossom_voxel_edits');
+        this.editTimes.clear();
+        this.dirtyChunks.clear();
+        this.lastResetAt = time;
+        localStorage.removeItem(EDITS_STORAGE_KEY);
+        localStorage.removeItem(EDIT_TIMES_STORAGE_KEY);
+        localStorage.setItem(LAST_RESET_STORAGE_KEY, String(time));
         this.chunks.forEach(chunk => {
           if (chunk.mesh) this.scene.remove(chunk.mesh);
         });
@@ -1963,9 +1979,11 @@
       }
 
       setBlock(x, y, z, blockId) {
-        if (y < 0 || y >= CHUNK_HEIGHT) return;
+        if (y < 0 || y >= CHUNK_HEIGHT) return 0;
         const key = `${x},${y},${z}`;
+        const time = Date.now();
         this.modifiedBlocks.set(key, blockId);
+        this.editTimes.set(key, time);
         this.saveEdits();
 
         const cx = Math.floor(x / CHUNK_SIZE);
@@ -1987,6 +2005,49 @@
         if (lx === CHUNK_SIZE - 1) this.buildChunkMesh(this.getOrCreateChunk(cx + 1, cz));
         if (lz === 0) this.buildChunkMesh(this.getOrCreateChunk(cx, cz - 1));
         if (lz === CHUNK_SIZE - 1) this.buildChunkMesh(this.getOrCreateChunk(cx, cz + 1));
+        return time;
+      }
+
+      // Block edits from another player, as [x, y, z, blockId, time]. They may arrive in large batches,
+      // so meshes are rebuilt across frames and the save happens once. Chunks not loaded yet need no
+      // work now: they pick up modifiedBlocks when they are generated.
+      applySharedEdits(edits) {
+        let changed = 0;
+        for (const [x, y, z, blockId, time] of edits) {
+          if (time < this.lastResetAt) continue;
+          const key = `${x},${y},${z}`;
+          if (this.modifiedBlocks.has(key)) {
+            const known = this.editTimes.get(key) || 0;
+            const current = this.modifiedBlocks.get(key);
+            // On an exact tie every device picks the same winner, so worlds cannot drift apart
+            if (time < known || (time === known && blockId <= current)) continue;
+          }
+          this.modifiedBlocks.set(key, blockId);
+          this.editTimes.set(key, time);
+          changed++;
+
+          if (blockId === BLOCK_DEFS.LANTERN || blockId === BLOCK_DEFS.PAPER_LANTERN) {
+            this.placedLanterns.set(key, { x, y, z });
+          } else {
+            this.placedLanterns.delete(key);
+          }
+
+          const cx = Math.floor(x / CHUNK_SIZE);
+          const cz = Math.floor(z / CHUNK_SIZE);
+          const chunk = this.getLoadedChunk(cx, cz);
+          if (!chunk) continue;
+          const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+          const lz = ((z % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+          chunk.blocks[lx + lz * CHUNK_SIZE + y * CHUNK_SIZE * CHUNK_SIZE] = blockId;
+          this.dirtyChunks.add(chunk);
+          const neighbors = [[lx === 0, cx - 1, cz], [lx === CHUNK_SIZE - 1, cx + 1, cz], [lz === 0, cx, cz - 1], [lz === CHUNK_SIZE - 1, cx, cz + 1]];
+          for (const [onEdge, nx, nz] of neighbors) {
+            const neighbor = onEdge && this.getLoadedChunk(nx, nz);
+            if (neighbor) this.dirtyChunks.add(neighbor);
+          }
+        }
+        if (changed > 0) this.saveEdits();
+        return changed;
       }
 
       getLoadedChunk(cx, cz) {
@@ -2936,9 +2997,16 @@
       // Runs pending work until the time budget is spent; always does at least one step.
       processStreamTasks(budgetMs) {
         const deadline = performance.now() + budgetMs;
-        while (this.streamTasks.length > 0) {
-          const { cx, cz } = this.streamTasks[0];
-          if (this.runStreamStep(cx, cz)) this.streamTasks.shift();
+        // Changes by another player come first: they happen near where someone is looking
+        while (this.dirtyChunks.size > 0 || this.streamTasks.length > 0) {
+          if (this.dirtyChunks.size > 0) {
+            const [chunk] = this.dirtyChunks;
+            this.dirtyChunks.delete(chunk);
+            if (chunk.mesh) this.buildChunkMesh(chunk);
+          } else {
+            const { cx, cz } = this.streamTasks[0];
+            if (this.runStreamStep(cx, cz)) this.streamTasks.shift();
+          }
           if (performance.now() >= deadline) break;
         }
       }
@@ -3003,6 +3071,80 @@
     const INTERLUDE_RHYTHMS = [[1, 1, 2], [2, 2], [1, 1, 1, 1], [0.5, 0.5, 1, 2]];
     const BASS_ROOTS = [110.0, 82.41]; // A2, E2
 
+    const noteToFrequency = (note) => {
+      const [, letter, sharp, octave] = note.match(/^([A-G])(#?)(\d)$/);
+      const semitone = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[letter] + (sharp ? 1 : 0);
+      return 440 * Math.pow(2, (semitone + (Number(octave) - 4) * 12 - 9) / 12);
+    };
+
+    // Step patterns: every bar has 16 steps, separated by spaces, and "." is a rest.
+    // Original compositions for this game. "bass" uses R for the root and O for an octave above.
+    const STEPS_PER_BAR = 16;
+    const BASS_TONE = { wave: 'triangle', cutoff: 900, gain: 0.3, seconds: 0.24 };
+    const BARS_PER_SECTION = 4;
+    const MUSIC_TRACK_ORDER = ['festival', 'adventure', 'sakura'];
+    const MUSIC_DEFAULT_TRACK = 'festival';
+    const MUSIC_TRACK_STORAGE_KEY = 'cherry_music_track';
+    const MUSIC_TRACKS = {
+      festival: {
+        label: '🥁 Nhạc: Lễ Hội',
+        bpm: 132,
+        lead: { wave: 'sawtooth', cutoff: 2600, gain: 0.17, seconds: 0.34 },
+        stab: { wave: 'sawtooth', cutoff: 1500, gain: 0.05, seconds: 0.14 },
+        arrangement: ['A', 'A', 'B', 'A'],
+        melody: {
+          A: [
+            'A4 . . C5 . . D5 . E5 . . D5 . C5 . .',
+            'A4 . C5 . D5 . C5 . A4 . G4 . E4 . . .',
+            'A4 . . C5 . . D5 . E5 . . G5 . E5 . .',
+            'D5 . E5 . D5 C5 . A4 . . G4 . A4 . . .'
+          ],
+          B: [
+            'E5 . E5 G5 . E5 D5 . C5 . D5 . E5 . . .',
+            'G5 . E5 . D5 . C5 . D5 . . E5 . . . .',
+            'A5 . G5 . E5 . G5 . A5 . G5 E5 . D5 . .',
+            'C5 . D5 . E5 . D5 C5 A4 . . . A4 . . .'
+          ]
+        },
+        roots: ['A2', 'G2', 'F2', 'G2'],
+        chords: [['A3', 'C4', 'E4'], ['G3', 'B3', 'D4'], ['F3', 'A3', 'C4'], ['G3', 'B3', 'D4']],
+        bass: 'R . . R . . O . R . . R . O . .',
+        stabs: '. . x . . . x . . . x . . . x .',
+        kick: 'x . . x . . x . x . . x . . x .',
+        snare: '. . . . x . . . . . . . x . . x',
+        hat: 'x . x . x . x . x . x . x . x x'
+      },
+      adventure: {
+        label: '🏃 Nhạc: Phiêu Lưu',
+        bpm: 118,
+        lead: { wave: 'square', cutoff: 3200, gain: 0.11, seconds: 0.3 },
+        stab: { wave: 'triangle', cutoff: 2400, gain: 0.09, seconds: 0.2 },
+        arrangement: ['A', 'B', 'A', 'B'],
+        melody: {
+          A: [
+            'D5 . F#5 . A5 . F#5 . E5 . D5 . E5 . . .',
+            'F#5 . E5 . D5 . B4 . A4 . . B4 . D5 . .',
+            'D5 . F#5 . A5 . B5 . A5 . F#5 . E5 . . .',
+            'D5 . E5 F#5 . E5 D5 . B4 . D5 . . . . .'
+          ],
+          B: [
+            'A5 . . F#5 . . A5 . B5 . A5 . F#5 . . .',
+            'E5 . . D5 . . E5 . F#5 . E5 . D5 . . .',
+            'B4 . D5 . E5 . F#5 . A5 . F#5 . E5 . D5 .',
+            'E5 . F#5 . E5 . D5 . D5 . . . . . . .'
+          ]
+        },
+        roots: ['D3', 'A2', 'B2', 'G2'],
+        chords: [['D4', 'F#4', 'A4'], ['C#4', 'E4', 'A4'], ['B3', 'D4', 'F#4'], ['B3', 'D4', 'G4']],
+        bass: 'R . . . O . R . . . R . O . . .',
+        stabs: '. . x . . . x . . . x . . x . .',
+        kick: 'x . . . . . x . x . . . . . . .',
+        snare: '. . . . x . . . . . . . x . . .',
+        hat: 'x . x . x . x . x . x . x . x .'
+      },
+      sakura: { label: '🌸 Nhạc: Anh Đào', calm: true }
+    };
+
     class ProceduralAudio {
       constructor() {
         this.ctx = null;
@@ -3014,6 +3156,58 @@
         this.beatInBar = 0;
         this.barCount = 0;
         this.playInterludeNext = false;
+        this.step = 0;
+        this.bar = 0;
+        this.trackName = MUSIC_DEFAULT_TRACK;
+        try {
+          const saved = localStorage.getItem(MUSIC_TRACK_STORAGE_KEY);
+          if (MUSIC_TRACKS[saved]) this.trackName = saved;
+        } catch (e) {
+          // Private browsing can block storage; the default track plays instead
+        }
+      }
+
+      get trackLabel() {
+        return MUSIC_TRACKS[this.trackName].label;
+      }
+
+      nextTrack() {
+        const index = MUSIC_TRACK_ORDER.indexOf(this.trackName);
+        this.setTrack(MUSIC_TRACK_ORDER[(index + 1) % MUSIC_TRACK_ORDER.length]);
+      }
+
+      setTrack(name) {
+        this.trackName = name;
+        try {
+          localStorage.setItem(MUSIC_TRACK_STORAGE_KEY, name);
+        } catch (e) {
+          // Not saved, which only means the default track next time
+        }
+        if (this.ctx && this.musicBus) this.startTrack();
+      }
+
+      // Notes already scheduled belong to the old bus, which fades out so they cannot clash
+      startTrack() {
+        const now = this.ctx.currentTime;
+        if (this.trackBus) {
+          const old = this.trackBus;
+          old.gain.setValueAtTime(old.gain.value, now);
+          old.gain.linearRampToValueAtTime(0, now + 0.2);
+          setTimeout(() => old.disconnect(), MUSIC_SCHEDULE_AHEAD * 1000 + 3500);
+        }
+        this.trackBus = this.ctx.createGain();
+        this.trackBus.connect(this.musicBus);
+
+        const calm = !!MUSIC_TRACKS[this.trackName].calm;
+        this.droneGains.forEach(gain => gain.gain.linearRampToValueAtTime(calm ? 0.025 : 0, now + 0.5));
+
+        this.musicQueue = [];
+        this.beatInBar = 0;
+        this.barCount = 0;
+        this.playInterludeNext = false;
+        this.step = 0;
+        this.bar = 0;
+        this.nextNoteTime = now + 0.12;
       }
 
       init() {
@@ -3051,29 +3245,42 @@
       }
 
       startMusic() {
+        // Keeps several loud notes and drums at once from distorting
+        const limiter = this.ctx.createDynamicsCompressor();
+        limiter.threshold.value = -12;
+        limiter.ratio.value = 8;
+        limiter.connect(this.masterGain);
+
         this.musicBus = this.ctx.createGain();
-        this.musicBus.connect(this.masterGain);
+        this.musicBus.connect(limiter);
+
+        const noise = this.ctx.createBuffer(1, this.ctx.sampleRate, this.ctx.sampleRate);
+        const samples = noise.getChannelData(0);
+        for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+        this.noiseBuffer = noise;
 
         const reverbSend = this.ctx.createGain();
-        reverbSend.gain.value = 0.3;
+        reverbSend.gain.value = 0.2;
         const reverb = this.createReverb(2.4);
         this.musicBus.connect(reverbSend);
         reverbSend.connect(reverb);
-        reverb.connect(this.masterGain);
+        reverb.connect(limiter);
 
-        // Soft open fifth held underneath the melody
+        // Soft open fifth held underneath the calm track
+        this.droneGains = [];
         [110.0, 164.81].forEach(freq => {
           const osc = this.ctx.createOscillator();
           const g = this.ctx.createGain();
           osc.type = 'sine';
           osc.frequency.value = freq;
-          g.gain.value = 0.025;
+          g.gain.value = 0;
+          this.droneGains.push(g);
           osc.connect(g);
           g.connect(this.musicBus);
           osc.start();
         });
 
-        this.nextNoteTime = this.ctx.currentTime + 0.8;
+        this.startTrack();
         // Notes go on the audio clock in advance, so slow frames or a background tab cannot
         // make the rhythm stumble.
         setInterval(() => this.scheduleMusic(), 250);
@@ -3109,6 +3316,16 @@
         const now = this.ctx.currentTime;
         if (this.nextNoteTime < now) this.nextNoteTime = now + 0.1;
 
+        const track = MUSIC_TRACKS[this.trackName];
+        if (!track.calm) {
+          const stepSeconds = 60 / track.bpm / 4;
+          while (this.nextNoteTime < now + MUSIC_SCHEDULE_AHEAD) {
+            this.playStep(track, this.nextNoteTime);
+            this.nextNoteTime += stepSeconds;
+          }
+          return;
+        }
+
         while (this.nextNoteTime < now + MUSIC_SCHEDULE_AHEAD) {
           if (this.beatInBar === 0) {
             const root = BASS_ROOTS[this.barCount % BASS_ROOTS.length];
@@ -3123,6 +3340,80 @@
           this.nextNoteTime += beats * MUSIC_BEAT_SECONDS;
           this.beatInBar = (this.beatInBar + beats) % 4;
         }
+      }
+
+      playStep(track, time) {
+        const at = (pattern) => pattern.split(' ')[this.step];
+        const section = track.arrangement[Math.floor(this.bar / BARS_PER_SECTION) % track.arrangement.length];
+        const chordIndex = this.bar % BARS_PER_SECTION;
+
+        const note = track.melody[section][chordIndex].split(' ')[this.step];
+        if (note && note !== '.') this.playTone(noteToFrequency(note), time, track.lead);
+
+        const bass = at(track.bass);
+        if (bass !== '.') {
+          const root = noteToFrequency(track.roots[chordIndex]);
+          this.playTone(bass === 'O' ? root * 2 : root, time, BASS_TONE);
+        }
+        if (at(track.stabs) !== '.') {
+          track.chords[chordIndex].forEach(chordNote => this.playTone(noteToFrequency(chordNote), time, track.stab));
+        }
+        if (at(track.kick) !== '.') this.playKick(time);
+        if (at(track.snare) !== '.') this.playNoiseHit(time, 1400, 0.2, 0.13);
+        if (at(track.hat) !== '.') this.playNoiseHit(time, 7000, 0.07, 0.04);
+
+        this.step++;
+        if (this.step === STEPS_PER_BAR) {
+          this.step = 0;
+          this.bar++;
+        }
+      }
+
+      playTone(frequency, time, { wave, cutoff, gain, seconds }) {
+        const osc = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const envelope = this.ctx.createGain();
+        osc.type = wave;
+        osc.frequency.value = frequency;
+        filter.type = 'lowpass';
+        filter.frequency.value = cutoff;
+        envelope.gain.setValueAtTime(0.0001, time);
+        envelope.gain.exponentialRampToValueAtTime(gain, time + 0.006);
+        envelope.gain.exponentialRampToValueAtTime(0.0001, time + seconds);
+        osc.connect(filter);
+        filter.connect(envelope);
+        envelope.connect(this.trackBus);
+        osc.start(time);
+        osc.stop(time + seconds + 0.02);
+      }
+
+      // Taiko-style drum: a low tone that falls quickly in pitch
+      playKick(time) {
+        const osc = this.ctx.createOscillator();
+        const envelope = this.ctx.createGain();
+        osc.frequency.setValueAtTime(150, time);
+        osc.frequency.exponentialRampToValueAtTime(48, time + 0.12);
+        envelope.gain.setValueAtTime(0.42, time);
+        envelope.gain.exponentialRampToValueAtTime(0.0001, time + 0.26);
+        osc.connect(envelope);
+        envelope.connect(this.trackBus);
+        osc.start(time);
+        osc.stop(time + 0.28);
+      }
+
+      playNoiseHit(time, highpass, gain, seconds) {
+        const source = this.ctx.createBufferSource();
+        const filter = this.ctx.createBiquadFilter();
+        const envelope = this.ctx.createGain();
+        source.buffer = this.noiseBuffer;
+        filter.type = 'highpass';
+        filter.frequency.value = highpass;
+        envelope.gain.setValueAtTime(gain, time);
+        envelope.gain.exponentialRampToValueAtTime(0.0001, time + seconds);
+        source.connect(filter);
+        filter.connect(envelope);
+        envelope.connect(this.trackBus);
+        source.start(time, Math.random() * 0.5, seconds + 0.02);
       }
 
       // Koto-like string: a fast attack, a bright overtone that fades quickly, and a long decay
@@ -3145,8 +3436,8 @@
 
         body.connect(bodyGain);
         overtone.connect(overtoneGain);
-        bodyGain.connect(this.musicBus);
-        overtoneGain.connect(this.musicBus);
+        bodyGain.connect(this.trackBus);
+        overtoneGain.connect(this.trackBus);
         body.start(time);
         overtone.start(time);
         body.stop(time + duration + 0.05);
@@ -3503,6 +3794,7 @@
     const ANIMAL_FLEE_SECONDS = 1.6;
     const ANIMAL_FLEE_SPEED_FACTOR = 3;
     const ANIMAL_MAX_STEP = 1;
+    const ANIMAL_GROUND_CHECK_FRAMES = 15; // the ground can be dug away from under a standing animal
     const ANIMAL_SPECIES = {
       deer: {
         herdSize: 3, speed: 1.3, fleeDistance: 5, hipHeight: 0.6, hop: 0, legSpeed: 9,
@@ -3635,21 +3927,26 @@
         return material;
       }
 
-      // Height of the ground an animal could stand on here, or null if it cannot. The chunk check
-      // comes first: reading a block in an unloaded chunk would generate it mid-frame.
-      getStandableGround(x, z) {
+      // Where an animal could stand in this column, looking at the real blocks because players dig
+      // and build. Scans down from one step above the reference height. Returns null if there is no
+      // footing within maxDrop, or for water. The chunk check comes first: reading a block in an
+      // unloaded chunk would generate it mid-frame.
+      getStandableGround(x, z, referenceY, maxDrop) {
         const cellX = Math.floor(x);
         const cellZ = Math.floor(z);
         const world = this.world;
         if (!world.getLoadedChunk(Math.floor(cellX / CHUNK_SIZE), Math.floor(cellZ / CHUNK_SIZE))) return null;
 
-        const ground = world.getTerrainHeight(cellX, cellZ);
-        if (ground <= WATER_LEVEL) return null;
-        const top = ground + 1;
-        if (world.getBlock(cellX, top, cellZ) !== BLOCK_DEFS.AIR ||
-            world.getBlock(cellX, top + 1, cellZ) !== BLOCK_DEFS.AIR ||
-            world.getBlock(cellX, ground, cellZ) === BLOCK_DEFS.AIR) return null;
-        return top;
+        const lowest = Math.max(1, referenceY - maxDrop);
+        for (let y = referenceY + ANIMAL_MAX_STEP; y >= lowest; y--) {
+          const below = world.getBlock(cellX, y - 1, cellZ);
+          if (below === BLOCK_DEFS.AIR) continue;
+          if (below === BLOCK_DEFS.WATER) return null;
+          const hasRoom = world.getBlock(cellX, y, cellZ) === BLOCK_DEFS.AIR &&
+                          world.getBlock(cellX, y + 1, cellZ) === BLOCK_DEFS.AIR;
+          return hasRoom ? y : null;
+        }
+        return null;
       }
 
       respawn(animal, herdMates, center, range) {
@@ -3666,7 +3963,9 @@
             z = center.z + Math.sin(angle) * distance;
           }
           if (Math.hypot(x - center.x, z - center.z) >= range) continue;
-          const ground = this.getStandableGround(x, z);
+          if (!this.world.getLoadedChunk(Math.floor(Math.floor(x) / CHUNK_SIZE), Math.floor(Math.floor(z) / CHUNK_SIZE))) continue;
+          const terrain = this.world.getTerrainHeight(Math.floor(x), Math.floor(z));
+          const ground = this.getStandableGround(x, z, terrain + 1, CHUNK_HEIGHT);
           if (ground === null) continue;
 
           Object.assign(animal, {
@@ -3676,6 +3975,13 @@
           animal.targetYaw = animal.yaw;
           return;
         }
+      }
+
+      // Falls if the ground was dug away; climbs out if a block was placed where the animal stands
+      checkFooting(animal) {
+        const ground = this.getStandableGround(animal.x, animal.z, animal.groundY, CHUNK_HEIGHT);
+        if (ground === null) animal.active = false; // now in water or walled in: reappear elsewhere
+        else animal.groundY = ground;
       }
 
       updateAnimal(animal, species, dt, center) {
@@ -3709,8 +4015,8 @@
             animal.x = nextX;
             animal.z = nextZ;
           } else {
-            const ground = this.getStandableGround(nextX, nextZ);
-            if (ground !== null && Math.abs(ground - animal.groundY) <= ANIMAL_MAX_STEP) {
+            const ground = this.getStandableGround(nextX, nextZ, animal.groundY, ANIMAL_MAX_STEP);
+            if (ground !== null) {
               animal.x = nextX;
               animal.z = nextZ;
               animal.cellX = cellX;
@@ -3728,6 +4034,7 @@
 
       update(dt, center, viewRadius) {
         this.time.value += dt;
+        this.frame = (this.frame || 0) + 1;
         const range = Math.min(ANIMAL_MAX_RANGE, viewRadius * CHUNK_SIZE);
 
         for (const herd of this.herds) {
@@ -3744,6 +4051,7 @@
             } else {
               anyActive = true;
               this.updateAnimal(animal, species, dt, center);
+              if ((this.frame + animal.index) % ANIMAL_GROUND_CHECK_FRAMES === 0) this.checkFooting(animal);
               const hop = animal.moving ? Math.abs(Math.sin(this.time.value * 9 + animal.phase)) * species.hop : 0;
               this.dummy.position.set(animal.x, animal.y + hop, animal.z);
               this.dummy.rotation.set(0, animal.yaw, 0);
@@ -4449,7 +4757,13 @@
     const MULTIPLAYER_LIBRARY_URL = 'https://cdn.jsdelivr.net/npm/mqtt@5.16.1/dist/mqtt.esm.js';
     const MULTIPLAYER_RELAYS = ['wss://broker.emqx.io:8084/mqtt', 'wss://broker.hivemq.com:8884/mqtt'];
     const MULTIPLAYER_TOPIC_PREFIX = 'cherry-blossom-garden-nguyenvus/v1';
-    const MULTIPLAYER_MAX_MESSAGE_LENGTH = 300;
+    const MULTIPLAYER_MAX_MESSAGE_LENGTH = 1600; // room for one full batch of block edits
+    const SYNC_EDITS_PER_MESSAGE = 40;
+    const SYNC_MAX_SHARED_EDITS = 2000;
+    const SYNC_MESSAGE_SPACING_MS = 100; // public relays do not like bursts
+    const SYNC_MAX_DELAY_MS = 1200; // players answer at slightly different moments, not all at once
+    const SYNC_MAX_EDITS_PER_SECOND = 1000;
+    const SYNC_MAX_CLOCK_AHEAD_MS = 10 * 60 * 1000;
     const MULTIPLAYER_DEFAULT_ROOM = 'vuon-chung';
     const MULTIPLAYER_MAX_PEERS = 8;
     const MULTIPLAYER_POSE_INTERVAL_MS = 200;
@@ -4477,6 +4791,17 @@
       Array.isArray(pose) && pose.length === 5 && pose.every(Number.isFinite) &&
       Math.abs(pose[0]) < 1e6 && Math.abs(pose[2]) < 1e6 && pose[1] > -64 && pose[1] < 256;
 
+    const isPlausibleEditTime = (time) =>
+      Number.isFinite(time) && time >= 0 && time <= Date.now() + SYNC_MAX_CLOCK_AHEAD_MS;
+    // Only blocks a player can really place, so a message cannot create anything else
+    const isValidEdit = (edit) =>
+      Array.isArray(edit) && edit.length === 5 &&
+      Number.isInteger(edit[0]) && Math.abs(edit[0]) < 1e6 &&
+      Number.isInteger(edit[1]) && edit[1] >= 0 && edit[1] < CHUNK_HEIGHT &&
+      Number.isInteger(edit[2]) && Math.abs(edit[2]) < 1e6 &&
+      (edit[3] === BLOCK_DEFS.AIR || HOTBAR_ITEMS.some(item => item.id === edit[3])) &&
+      isPlausibleEditTime(edit[4]);
+
     class MultiplayerClient {
       constructor(game) {
         this.game = game;
@@ -4484,6 +4809,7 @@
         this.selfId = Math.random().toString(36).slice(2, 14).padEnd(12, '0');
         this.sequence = Date.now(); // keeps rising across reloads, so old messages can be told apart
         this.relays = [];
+        this.departed = new Map();
         this.status = 'off';
         this.name = '';
         this.lastPoseSent = 0;
@@ -4506,9 +4832,10 @@
           this.relays = MULTIPLAYER_RELAYS.map(url => {
             const relay = mqtt.connect(url, { reconnectPeriod: 3000, connectTimeout: 8000, keepalive: 30 });
             relay.on('connect', () => {
-              relay.subscribe(this.topic);
+              relay.subscribe(this.topic, { qos: 1 });
               this.setStatus('online');
               this.lastPoseSent = 0; // say hello straight away, including after a phone wakes up
+              this.publish({ needEdits: true }); // catch up on anything missed while away
             });
             relay.on('message', (_topic, payload) => this.handleMessage(payload.toString()));
             relay.on('error', error => console.warn('Multiplayer relay error:', url, error.message));
@@ -4525,10 +4852,13 @@
         }
       }
 
+      // Positions are replaced by the next one a moment later, so a lost one does not matter.
+      // Anything else is sent with delivery confirmation.
       publish(fields) {
         const message = JSON.stringify({ id: this.selfId, seq: ++this.sequence, name: this.name, ...fields });
+        const options = { qos: fields.pose ? 0 : 1 };
         for (const relay of this.relays) {
-          if (relay.connected) relay.publish(this.topic, message);
+          if (relay.connected) relay.publish(this.topic, message, options);
         }
       }
 
@@ -4544,20 +4874,90 @@
         if (!message || typeof message.id !== 'string' || !/^[a-z0-9]{8,16}$/.test(message.id)) return;
         if (message.id === this.selfId || !Number.isFinite(message.seq)) return;
 
-        // Every message arrives once per relay; handle only the first copy
-        const known = this.peers.get(message.id);
-        if (known && message.seq <= known.lastSequence) return;
-
         if (message.leaving === true) {
+          this.departed.set(message.id, message.seq);
           this.removePeer(message.id, true);
           return;
         }
-        if (!isValidPose(message.pose)) return;
+        // A copy from the slower relay must not bring back someone who just left
+        if (message.seq <= (this.departed.get(message.id) || 0)) return;
+
         const peer = this.getOrAddPeer(message.id);
         if (!peer) return;
-        peer.lastSequence = message.seq;
         this.handleName(message.id, message.name);
-        this.handlePose(message.id, message.pose);
+
+        // Every message arrives once per relay. Old positions are skipped, but edits never are:
+        // relays do not stay in step, and applying an edit twice is harmless while skipping one is not.
+        if (isValidPose(message.pose) && message.seq > peer.lastSequence) {
+          peer.lastSequence = message.seq;
+          this.handlePose(message.id, message.pose);
+        }
+        if (message.needEdits === true) this.scheduleSharingEdits();
+        if (Number.isFinite(message.reset)) this.handleReset(message.reset, peer);
+        if (Array.isArray(message.edits)) this.handleEdits(message.edits, peer);
+      }
+
+      shareEdit(x, y, z, blockId, time) {
+        this.publish({ edits: [[x, y, z, blockId, time]] });
+      }
+
+      shareReset(time) {
+        this.publish({ reset: time });
+      }
+
+      handleReset(time, peer) {
+        if (time <= this.game.world.lastResetAt || !isPlausibleEditTime(time)) return;
+        this.game.resetWorldAndView(time);
+        this.game.showToast(`${peer.name} đã đặt lại thế giới`);
+      }
+
+      handleEdits(edits, peer) {
+        const now = performance.now();
+        if (now - peer.editWindowStart >= 1000) {
+          peer.editWindowStart = now;
+          peer.editsInWindow = 0;
+        }
+        const valid = edits.filter(isValidEdit);
+        // Beyond the limit edits are dropped, and only come back the next time worlds are compared
+        const allowed = valid.slice(0, Math.max(0, SYNC_MAX_EDITS_PER_SECOND - peer.editsInWindow));
+        peer.editsInWindow += allowed.length;
+        if (allowed.length) this.game.world.applySharedEdits(allowed);
+      }
+
+      // Someone new has appeared, or asked: send them this world's edits, and they send theirs.
+      // Together with "newest edit wins", this brings both worlds to the same state.
+      scheduleSharingEdits() {
+        if (this.shareTimer) return;
+        this.shareTimer = setTimeout(() => {
+          this.shareTimer = null;
+          this.shareEditsInBatches();
+        }, Math.random() * SYNC_MAX_DELAY_MS);
+      }
+
+      shareEditsInBatches() {
+        clearInterval(this.batchTimer);
+        const world = this.game.world;
+        if (world.lastResetAt > 0) this.publish({ reset: world.lastResetAt });
+
+        const pending = [];
+        world.modifiedBlocks.forEach((blockId, key) => {
+          const [x, y, z] = key.split(',').map(Number);
+          pending.push([x, y, z, blockId, world.editTimes.get(key) || 0]);
+        });
+        pending.sort((a, b) => b[4] - a[4]);
+        pending.length = Math.min(pending.length, SYNC_MAX_SHARED_EDITS);
+
+        let next = 0;
+        const sendBatch = () => {
+          if (next >= pending.length) {
+            clearInterval(this.batchTimer);
+            return;
+          }
+          this.publish({ edits: pending.slice(next, next + SYNC_EDITS_PER_MESSAGE) });
+          next += SYNC_EDITS_PER_MESSAGE;
+        };
+        sendBatch();
+        this.batchTimer = setInterval(sendBatch, SYNC_MESSAGE_SPACING_MS);
       }
 
       setStatus(status) {
@@ -4606,9 +5006,12 @@
           greetUntil: 0,
           greetYaw: null,
           lastSequence: 0,
+          editWindowStart: 0,
+          editsInWindow: 0,
           lastHeard: performance.now()
         };
         this.peers.set(peerId, peer);
+        this.scheduleSharingEdits();
         this.setNameTag(peer);
         this.setStatus('online');
         return peer;
@@ -4908,6 +5311,14 @@
         this.renderer.shadowMap.enabled = QUALITY.shadows;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.viewport.appendChild(this.renderer.domElement);
+      }
+
+      resetWorldAndView(time) {
+        this.world.resetWorld(time);
+        this.world.updateAround(this.player.pos.x, this.player.pos.z, 1);
+        this.world.scheduleAround(this.player.pos.x, this.player.pos.z, this.viewRadius);
+        this.setupTreeLanternLights();
+        this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
       }
 
       // Moves the player a few blocks away from a point, onto open ground, and turns to face it.
@@ -5351,6 +5762,15 @@
           this.requestPointerLock();
         });
 
+        const musicButton = document.getElementById('btn-music');
+        musicButton.textContent = this.audio.trackLabel;
+        this.changeMusic = () => {
+          this.audio.nextTrack();
+          musicButton.textContent = this.audio.trackLabel;
+          this.showToast(this.audio.trackLabel);
+        };
+        musicButton.addEventListener('click', this.changeMusic);
+
         document.getElementById('btn-audio').addEventListener('click', () => {
           const on = this.audio.toggleMute();
           document.getElementById('btn-audio').textContent = on ? '🔊 Nhạc: BẬT' : '🔇 Nhạc: TẮT';
@@ -5441,12 +5861,10 @@
         });
 
         document.getElementById('btn-reset-world').addEventListener('click', () => {
-          if (confirm('Đặt lại toàn bộ thế giới về nguyên bản?')) {
-            this.world.resetWorld();
-            this.world.updateAround(this.player.pos.x, this.player.pos.z, 1);
-            this.world.scheduleAround(this.player.pos.x, this.player.pos.z, this.viewRadius);
-            this.setupTreeLanternLights();
-            this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
+          if (confirm('Đặt lại toàn bộ thế giới về nguyên bản, cho cả những người đang ở cùng phòng?')) {
+            const time = Date.now();
+            this.resetWorldAndView(time);
+            this.multiplayer.shareReset(time);
             this.showToast('Đã làm mới thế giới!');
             this.togglePauseMenu(false);
           }
@@ -5510,6 +5928,8 @@
             this.isFlyMode = !this.isFlyMode;
             document.getElementById('btn-fly').textContent = this.isFlyMode ? '🕊️ Bay: BẬT' : '🕊️ Bay: TẮT';
             this.showToast(this.isFlyMode ? 'Chế độ bay: BẬT' : 'Chế độ bay: TẮT');
+          } else if (e.code === 'KeyM') {
+            this.changeMusic();
           } else if (e.code === 'KeyC') {
             this.toggleCinematicTour();
           } else if (e.code === 'KeyV') {
@@ -5781,7 +6201,8 @@
         // Spawn smooth block break debris particles
         this.blockParticles.burst(target.x, target.y, target.z, bId, 18);
 
-        this.world.setBlock(target.x, target.y, target.z, BLOCK_DEFS.AIR);
+        const editTime = this.world.setBlock(target.x, target.y, target.z, BLOCK_DEFS.AIR);
+        this.multiplayer.shareEdit(target.x, target.y, target.z, BLOCK_DEFS.AIR, editTime);
         this.audio.playBlockBreak();
       }
 
@@ -5808,7 +6229,8 @@
         }
 
         const selectedItem = HOTBAR_ITEMS[this.activeSlot];
-        this.world.setBlock(p.x, p.y, p.z, selectedItem.id);
+        const editTime = this.world.setBlock(p.x, p.y, p.z, selectedItem.id);
+        this.multiplayer.shareEdit(p.x, p.y, p.z, selectedItem.id, editTime);
 
         // Pop / scale animation on placed block
         this.blockPlacer.spawnPop(p.x, p.y, p.z, selectedItem.id);
