@@ -1035,9 +1035,10 @@
       <div class="setting-row">
         <span>Tầm hiển thị (Render Distance)</span>
         <select id="set-chunks">
-          <option value="2">Gần (2 Chunks - Mượt)</option>
-          <option value="3" selected>Tiêu chuẩn (3 Chunks)</option>
-          <option value="4">Xa (4 Chunks - Chi tiết)</option>
+          <option value="2">Gần (2 Chunks - Mượt nhất)</option>
+          <option value="3">Vừa (3 Chunks)</option>
+          <option value="4">Xa (4 Chunks)</option>
+          <option value="5">Rất xa (5 Chunks - Máy mạnh)</option>
         </select>
       </div>
 
@@ -1441,6 +1442,9 @@
             }
           }
         });
+        // Repeats so the texture can scroll, which makes the water appear to flow
+        atlas['water'].texture.wrapS = THREE.RepeatWrapping;
+        atlas['water'].texture.wrapT = THREE.RepeatWrapping;
 
         // 18. Torii Red: Vibrant Japanese vermilion
         atlas['torii_red'] = this.create16x16(ctx => {
@@ -1615,6 +1619,19 @@
     // =========================================================================
     const CHUNK_SIZE = 16;
     const CHUNK_HEIGHT = 32;
+    const WATER_LEVEL = 6;
+    const RIVER_BANK_WIDTH = 9;
+    const RIVER_DEPTH = 3;
+    const RIVER_SAND_WIDTH = 3;
+    const RIVER_TREE_CLEARANCE = 2;
+    const RIVER_BRIDGE_SPACING = 64;
+    const RIVER_BRIDGE_OFFSET = 8;
+    const RIVER_BRIDGE_LAKE_CLEARANCE = 26; // no bridges where the river runs through the lake
+    const WATER_FLOW_SPEED = 0.05;
+    const WATER_EXIT_SPEED = 7.5;
+
+    // Thick enough that the edge of the loaded world stays hidden at any view distance
+    const fogDensityForRadius = (radiusChunks) => 0.85 / (radiusChunks * 16);
     const STREAM_BUDGET_MS = 4;
     const FLOWER_MATERIAL_KEY = 'flower';
     const FLOWER_TINTS = [
@@ -1640,9 +1657,8 @@
           stars: 800,
           groundPetals: 400,
           flowerDensity: 0.09,
-          viewRadius: 2,
-          hiddenMargin: 1,
-          fogDensity: 0.02 // hides the shorter view distance
+          viewRadius: 3,
+          hiddenMargin: 1
         }
       : {
           maxPixelRatio: 1.5,
@@ -1652,9 +1668,8 @@
           stars: 1600,
           groundPetals: 900,
           flowerDensity: 0.2, // share of grass columns with a flower
-          viewRadius: 3,
-          hiddenMargin: 2,
-          fogDensity: 0.014
+          viewRadius: 4,
+          hiddenMargin: 1
         };
     const LANTERN_REFRESH_MS = 300;
     const LOW_FPS_THRESHOLD = 35;
@@ -1931,12 +1946,70 @@
         const step = Math.floor(h);
 
         const lakeDist = Math.hypot(wx - this.lakeCenter.x, (wz - this.lakeCenter.z) * 1.15);
-        if (lakeDist < 18) {
-          const depth = Math.floor((1.0 - lakeDist / 18) * 6.5);
-          return Math.max(5, step - depth);
-        }
+        const height = lakeDist < 18
+          ? Math.max(5, step - Math.floor((1.0 - lakeDist / 18) * 6.5))
+          : Math.min(CHUNK_HEIGHT - 6, Math.max(7, step));
+        return this.carveRiver(height, wx, wz);
+      }
 
-        return Math.min(CHUNK_HEIGHT - 6, Math.max(7, step));
+      // The river meanders along the z axis, west of the stone path, and flows through the lake.
+      getRiverCenter(wz) {
+        return -34 + Math.sin(wz * 0.018) * 10 + Math.sin(wz * 0.047 + 1.3) * 6;
+      }
+
+      getRiverHalfWidth(wz) {
+        return 6 + Math.sin(wz * 0.031) * 2;
+      }
+
+      carveRiver(height, wx, wz) {
+        const halfWidth = this.getRiverHalfWidth(wz);
+        const dist = Math.abs(wx - this.getRiverCenter(wz));
+
+        if (dist < halfWidth) {
+          const edge = dist / halfWidth;
+          return Math.min(height, WATER_LEVEL - Math.round(RIVER_DEPTH * (1 - edge * edge)));
+        }
+        if (dist < halfWidth + RIVER_BANK_WIDTH) {
+          // Hills ease down to just above the water instead of ending in a cliff
+          const t = (dist - halfWidth) / RIVER_BANK_WIDTH;
+          const ease = t * t * (3 - 2 * t);
+          const bank = WATER_LEVEL + 1 + (height - WATER_LEVEL - 1) * ease;
+          return Math.min(height, Math.round(bank));
+        }
+        return height;
+      }
+
+      isOnRiverBank(wx, wz, margin) {
+        return Math.abs(wx - this.getRiverCenter(wz)) < this.getRiverHalfWidth(wz) + margin;
+      }
+
+      // Wooden crossings, level with the banks so they can be walked onto without jumping.
+      buildRiverBridges(cx, cz, setStructBlock) {
+        const startZ = cz * CHUNK_SIZE;
+        for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+          const bridgeZ = startZ + lz;
+          const phase = bridgeZ - RIVER_BRIDGE_OFFSET;
+          if (((phase % RIVER_BRIDGE_SPACING) + RIVER_BRIDGE_SPACING) % RIVER_BRIDGE_SPACING !== 0) continue;
+
+          const center = Math.round(this.getRiverCenter(bridgeZ));
+          if (Math.floor(center / CHUNK_SIZE) !== cx) continue;
+          if (Math.hypot(center - this.lakeCenter.x, bridgeZ - this.lakeCenter.z) < RIVER_BRIDGE_LAKE_CLEARANCE) continue;
+
+          const reach = Math.ceil(this.getRiverHalfWidth(bridgeZ)) + RIVER_BANK_WIDTH;
+          for (let x = center - reach; x <= center + reach; x++) {
+            let hasDeck = false;
+            for (let dz = -1; dz <= 1; dz++) {
+              if (this.getTerrainHeight(x, bridgeZ + dz) <= WATER_LEVEL) {
+                setStructBlock(x, WATER_LEVEL + 1, bridgeZ + dz, BLOCK_DEFS.WOOD_PLANKS);
+                hasDeck = true;
+              }
+            }
+            if (hasDeck && x % 2 === 0) {
+              setStructBlock(x, WATER_LEVEL + 2, bridgeZ - 2, BLOCK_DEFS.WOOD_LOG);
+              setStructBlock(x, WATER_LEVEL + 2, bridgeZ + 2, BLOCK_DEFS.WOOD_LOG);
+            }
+          }
+        }
       }
 
       getHighestSolidY(x, z) {
@@ -1977,8 +2050,8 @@
         const { cx, cz, blocks } = chunk;
         const startX = cx * CHUNK_SIZE;
         const startZ = cz * CHUNK_SIZE;
-        const waterLevel = 6;
-        const MIN_GROUND_LEVEL = 5;
+        const waterLevel = WATER_LEVEL;
+        const MIN_GROUND_LEVEL = WATER_LEVEL - RIVER_DEPTH;
 
         for (let lz = 0; lz < CHUNK_SIZE; lz++) {
           const wz = startZ + lz;
@@ -1994,7 +2067,7 @@
               } else if (y < baseH) {
                 block = BLOCK_DEFS.DIRT;
               } else if (y === baseH) {
-                if (baseH <= waterLevel + 1 && lakeDist < 20) {
+                if (baseH <= waterLevel + 1 && (lakeDist < 20 || this.isOnRiverBank(wx, wz, RIVER_SAND_WIDTH))) {
                   block = BLOCK_DEFS.SAND;
                 } else {
                   block = BLOCK_DEFS.GRASS;
@@ -2045,6 +2118,8 @@
           }
         };
 
+        this.buildRiverBridges(cx, cz, setStructBlock);
+
         // Well-spaced organic tree distribution
         for (let lz = 3; lz < CHUNK_SIZE; lz += 8) {
           for (let lx = 3; lx < CHUNK_SIZE; lx += 8) {
@@ -2057,6 +2132,7 @@
 
             const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
             if (lakeDist < 12) continue; // inside lake
+            if (this.isOnRiverBank(wx, wz, RIVER_TREE_CLEARANCE)) continue;
 
             const gy = this.getTerrainHeight(wx, wz);
             if (gy < 6 || gy > CHUNK_HEIGHT - 13) continue;
@@ -2579,7 +2655,7 @@
             );
             pushQuad(
               [[x, groundY, z - w], [x, groundY, z + w], [x, topY, z + w], [x, topY, z - w]],
-              [1, 0, 0], stemUV, FLOWER_STEM_COLOR
+              [-1, 0, 0], stemUV, FLOWER_STEM_COLOR
             );
 
             const cos = Math.cos(angle) * half;
@@ -2589,7 +2665,9 @@
               const dz = u * sin + v * cos;
               return [x + dx, topY + dx * tiltX + dz * tiltZ, z + dz];
             };
-            pushQuad([corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], [0, 1, 0], headUV, tint);
+            // Wound to face upward: the material is double-sided, so a downward-facing quad would be
+            // lit as the underside when seen from above, and turn dark.
+            pushQuad([corner(-1, 1), corner(1, 1), corner(1, -1), corner(-1, -1)], [0, 1, 0], headUV, tint);
           }
         }
 
@@ -2626,11 +2704,14 @@
         const pcx = Math.floor(playerX / CHUNK_SIZE);
         const pcz = Math.floor(playerZ / CHUNK_SIZE);
 
-        // Chunks are never unloaded, so hide far ones to keep draw calls flat while exploring.
-        const visibleRadius = radiusChunks + QUALITY.hiddenMargin;
+        // Block data stays in memory, but far meshes are freed and rebuilt when the player returns,
+        // so a long walk cannot run a phone out of graphics memory.
+        const keepRadius = radiusChunks + QUALITY.hiddenMargin;
         this.chunks.forEach(chunk => {
-          if (chunk.mesh) {
-            chunk.mesh.visible = Math.max(Math.abs(chunk.cx - pcx), Math.abs(chunk.cz - pcz)) <= visibleRadius;
+          if (chunk.mesh && Math.max(Math.abs(chunk.cx - pcx), Math.abs(chunk.cz - pcz)) > keepRadius) {
+            this.scene.remove(chunk.mesh);
+            chunk.mesh.geometry.dispose();
+            chunk.mesh = null;
           }
         });
 
@@ -3808,7 +3889,8 @@
 
       initThree() {
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.FogExp2(0xfcd6df, QUALITY.fogDensity);
+        this.viewRadius = QUALITY.viewRadius;
+        this.scene.fog = new THREE.FogExp2(0xfcd6df, fogDensityForRadius(this.viewRadius));
 
         this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 400);
 
@@ -3918,7 +4000,7 @@
         const spawn = this.findSpawnPosition();
         this.spawnPoint = { ...spawn };
 
-        this.world.scheduleAround(spawn.x, spawn.z, QUALITY.viewRadius);
+        this.world.scheduleAround(spawn.x, spawn.z, this.viewRadius);
         this.lastChunkX = Math.floor(spawn.x / CHUNK_SIZE);
         this.lastChunkZ = Math.floor(spawn.z / CHUNK_SIZE);
 
@@ -3938,9 +4020,10 @@
         this.blockPlacer = new BlockPlacementAnimator(this.scene, this.world.materials);
         this.blockParticles = new VoxelParticleSystem(this.scene);
 
-        const boxGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
-        const wireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
-        this.highlightBox = new THREE.Mesh(boxGeo, wireMat);
+        // Only the block's 12 edges; a wireframe material would also draw each face's diagonal
+        const boxEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.01, 1.01, 1.01));
+        const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+        this.highlightBox = new THREE.LineSegments(boxEdges, edgeMat);
         this.highlightBox.visible = false;
         this.scene.add(this.highlightBox);
       }
@@ -4308,7 +4391,7 @@
           if (confirm('Đặt lại toàn bộ thế giới về nguyên bản?')) {
             this.world.resetWorld();
             this.world.updateAround(this.player.pos.x, this.player.pos.z, 1);
-            this.world.scheduleAround(this.player.pos.x, this.player.pos.z, QUALITY.viewRadius);
+            this.world.scheduleAround(this.player.pos.x, this.player.pos.z, this.viewRadius);
             this.setupTreeLanternLights();
             this.groundPetals.spawnAround(this.player.pos.x, this.player.pos.z);
             this.showToast('Đã làm mới thế giới!');
@@ -4331,6 +4414,14 @@
           document.getElementById('btn-time').textContent = labels[e.target.value];
         });
         document.getElementById('set-volume').addEventListener('input', (e) => this.audio.setVolume(e.target.value / 100));
+
+        const viewDistance = document.getElementById('set-chunks');
+        viewDistance.value = String(this.viewRadius);
+        viewDistance.addEventListener('change', (e) => {
+          this.viewRadius = Number(e.target.value);
+          this.scene.fog.density = fogDensityForRadius(this.viewRadius);
+          this.world.scheduleAround(this.player.pos.x, this.player.pos.z, this.viewRadius);
+        });
 
         window.addEventListener('keydown', (e) => {
           this.inputKeys[e.code] = true;
@@ -4835,7 +4926,15 @@
           this.player.vel.y -= gravity * dt;
           if (this.player.vel.y < -35) this.player.vel.y = -35;
 
-          if (this.player.isGrounded && this.inputKeys['Space']) {
+          const feetBlock = this.world.getBlock(
+            Math.floor(this.player.pos.x),
+            Math.floor(this.player.pos.y + 0.05),
+            Math.floor(this.player.pos.z)
+          );
+          if (feetBlock === BLOCK_DEFS.WATER && this.inputKeys['Space']) {
+            // Treading at the surface: a strong kick, enough to climb a bank one block high
+            this.player.vel.y = WATER_EXIT_SPEED;
+          } else if (this.player.isGrounded && this.inputKeys['Space']) {
             this.player.vel.y = 8.6;
             this.player.isGrounded = false;
           }
@@ -5426,11 +5525,12 @@
         const px = this.isCinematicTour ? this.camera.position.x : this.player.pos.x;
         const pz = this.isCinematicTour ? this.camera.position.z : this.player.pos.z;
         const curYaw = this.isCinematicTour ? this.tourCurrentYaw : this.player.yaw;
-        const range = 24;
+        const range = 48;
+        const cellSize = 4;
         const scale = w / (range * 2);
 
-        for (let rz = -range; rz <= range; rz += 2) {
-          for (let rx = -range; rx <= range; rx += 2) {
+        for (let rz = -range; rz <= range; rz += cellSize) {
+          for (let rx = -range; rx <= range; rx += cellSize) {
             const bx = Math.floor(px + rx);
             const bz = Math.floor(pz + rz);
             const b = this.world.getLoadedTopBlock(bx, bz);
@@ -5445,7 +5545,7 @@
             else if (b === BLOCK_DEFS.WOOD_PLANKS) ctx.fillStyle = '#d4a264';
             else ctx.fillStyle = '#5d5f67';
 
-            ctx.fillRect((rx + range) * scale, (rz + range) * scale, scale * 2, scale * 2);
+            ctx.fillRect((rx + range) * scale, (rz + range) * scale, scale * cellSize, scale * cellSize);
           }
         }
 
@@ -5471,6 +5571,7 @@
 
         // 1. Update Wind System & Vertex Shaders
         this.wind.update(dt);
+        this.textures['water'].texture.offset.y = (this.wind.time * WATER_FLOW_SPEED) % 1;
 
         // 2. Smooth Time of Day Transitions
         this.updateTimeTransition(dt);
@@ -5501,7 +5602,7 @@
         if (pcx !== this.lastChunkX || pcz !== this.lastChunkZ) {
           this.lastChunkX = pcx;
           this.lastChunkZ = pcz;
-          this.world.scheduleAround(streamX, streamZ, this.isCinematicTour ? QUALITY.viewRadius : 2);
+          this.world.scheduleAround(streamX, streamZ, this.viewRadius);
         }
 
         // Terrain, trees and meshes share a per-frame time budget so walking never hitches
