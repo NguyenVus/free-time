@@ -1,6 +1,7 @@
 import { AnimalSystem } from '../creatures/AnimalSystem';
 import { BLOCK_DEFS, BLOCK_NAMES, HOTBAR_ITEMS } from '../world/blocks';
-import { BLOCK_REACH, CHUNK_HEIGHT, CHUNK_SIZE, FULLSCREEN_HINT_MS, FULLSCREEN_REFUSED_MESSAGE, IS_TOUCH_DEVICE, LANTERN_REFRESH_MS, LOW_FPS_READINGS, LOW_FPS_THRESHOLD, MIN_RENDER_SCALE, OUT_OF_REACH_MESSAGE, QUALITY, STREAM_BUDGET_MS, SWIM_BUOYANCY, SWIM_DIVE_SPEED, SWIM_PITCH_DEADZONE, SWIM_VERTICAL_SPEED, TOUCH_LOOK_SPEED, UNDERWATER_FOG_COLOR, UNDERWATER_FOG_DENSITY, WATER_EXIT_SPEED, WATER_FLOW_SPEED, fogDensityForRadius, getFullscreenElement, getFullscreenHelp, isRunningAsHomeScreenApp } from '../config';
+import { BLOCK_REACH, CHUNK_HEIGHT, CHUNK_SIZE, FUJI, FULLSCREEN_HINT_MS, FULLSCREEN_REFUSED_MESSAGE, IS_TOUCH_DEVICE, LANTERN_REFRESH_MS, LOW_FPS_READINGS, LOW_FPS_THRESHOLD, MIN_RENDER_SCALE, OUT_OF_REACH_MESSAGE, QUALITY, STREAM_BUDGET_MS, SWIM_BUOYANCY, SWIM_DIVE_SPEED, SWIM_PITCH_DEADZONE, SWIM_VERTICAL_SPEED, TOUCH_LOOK_SPEED, UNDERWATER_FOG_COLOR, UNDERWATER_FOG_DENSITY, WATER_EXIT_SPEED, WATER_FLOW_SPEED, fogDensityForRadius, getFullscreenElement, getFullscreenHelp, isRunningAsHomeScreenApp } from '../config';
+import { FujiBackdrop } from '../sky/FujiBackdrop';
 import { BlockPlacementAnimator } from '../effects/BlockPlacementAnimator';
 import { FishSystem } from '../creatures/FishSystem';
 import { GroundPetalSystem } from '../effects/GroundPetalSystem';
@@ -18,6 +19,7 @@ import { WindSystem } from '../world/WindSystem';
 // 9. MAIN ENGINE ORCHESTRATOR
 // =========================================================================
 export class CherrySanctuary {
+  declare fujiBackdrop: FujiBackdrop;
   declare viewportWidth: number;
   declare viewportHeight: number;
   declare _camOffset: any;
@@ -441,6 +443,7 @@ export class CherrySanctuary {
     this.fish = new FishSystem(this.scene, this.world);
     this.animals = new AnimalSystem(this.scene, this.world);
     this.skyBodies = new SkyBodies(this.scene);
+    this.fujiBackdrop = new FujiBackdrop(this.scene);
 
     this.sunLight = new THREE.DirectionalLight(0xfff3db, 1.9);
     this.sunLight.castShadow = QUALITY.shadows;
@@ -2027,11 +2030,27 @@ export class CherrySanctuary {
         else if (b === BLOCK_DEFS.LEAVES_SOFT || b === BLOCK_DEFS.LEAVES_MAGENTA) ctx.fillStyle = '#ec4899';
         else if (b === BLOCK_DEFS.TORII_RED) ctx.fillStyle = '#ef4444';
         else if (b === BLOCK_DEFS.WOOD_PLANKS) ctx.fillStyle = '#d4a264';
+        else if (b === BLOCK_DEFS.SNOW) ctx.fillStyle = '#f4f7fc';
+        else if (b === BLOCK_DEFS.VOLCANIC_ROCK) ctx.fillStyle = '#3b3a44';
         else ctx.fillStyle = '#5d5f67';
 
         ctx.fillRect((rx + range) * scale, (rz + range) * scale, scale * cellSize, scale * cellSize);
       }
     }
+
+    // The mountain, pinned to the edge of the map until it is in range, shows which way to walk
+    const fujiDx = (FUJI.x - px) * scale;
+    const fujiDz = (FUJI.z - pz) * scale;
+    const fujiPin = Math.min(1, (w / 2 - 5) / Math.max(1, Math.hypot(fujiDx, fujiDz)));
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#3b3a44';
+    ctx.beginPath();
+    ctx.moveTo(w / 2 + fujiDx * fujiPin, h / 2 + fujiDz * fujiPin - 4);
+    ctx.lineTo(w / 2 + fujiDx * fujiPin + 4, h / 2 + fujiDz * fujiPin + 3);
+    ctx.lineTo(w / 2 + fujiDx * fujiPin - 4, h / 2 + fujiDz * fujiPin + 3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
 
     this.multiplayer.drawOnMinimap(ctx, w, px, pz, range);
 
@@ -2135,6 +2154,7 @@ export class CherrySanctuary {
 
     // After the camera has moved this frame, so the sun and moon do not jitter
     this.skyBodies.update(this.camera, this.sunLight.position, dt);
+    this.fujiBackdrop.update(this.camera, this.scene.fog.color, this.sunLight.intensity);
     this.updateUnderwaterView();
 
     this.renderer.render(this.scene, this.camera);

@@ -1,9 +1,10 @@
 import type { SharedEdit } from '../multiplayer/MultiplayerClient';
 import { BLOCK_DEFS } from './blocks';
-import { CHUNK_HEIGHT, CHUNK_SIZE, EDITS_STORAGE_KEY, EDIT_TIMES_STORAGE_KEY, FLOWER_MATERIAL_KEY, FLOWER_STEM_COLOR, FLOWER_STEM_WIDTH, FLOWER_TINTS, HOUSE_WALL_HEIGHT, LAST_RESET_STORAGE_KEY, QUALITY, RIVER_BANK_WIDTH, RIVER_BRIDGE_LAKE_CLEARANCE, RIVER_BRIDGE_OFFSET, RIVER_BRIDGE_SPACING, RIVER_DEPTH, RIVER_SAND_WIDTH, RIVER_TREE_CLEARANCE, VILLAGE, VILLAGE_HOUSES, VILLAGE_ROAD, VILLAGE_TREE_CLEARANCE, WATER_LEVEL } from '../config';
+import { CHUNK_HEIGHT, CHUNK_SIZE, EDITS_STORAGE_KEY, EDIT_TIMES_STORAGE_KEY, FLOWER_MATERIAL_KEY, FLOWER_STEM_COLOR, FLOWER_STEM_WIDTH, FLOWER_TINTS, FUJI, FUJI_ROAD, HOUSE_WALL_HEIGHT, LAST_RESET_STORAGE_KEY, NATURAL_TERRAIN_MAX, QUALITY, RIVER_BANK_WIDTH, RIVER_BRIDGE_LAKE_CLEARANCE, RIVER_BRIDGE_OFFSET, RIVER_BRIDGE_SPACING, RIVER_DEPTH, RIVER_SAND_WIDTH, RIVER_TREE_CLEARANCE, TREE_MAX_GROUND, VILLAGE, VILLAGE_HOUSES, VILLAGE_ROAD, VILLAGE_TREE_CLEARANCE, WATER_LEVEL } from '../config';
 import { SimpleNoise } from './SimpleNoise';
 
 export class VoxelWorld {
+  declare fujiRoadEndY: number;
   declare chunks: any;
   declare decoratedChunks: any;
   declare dirtyChunks: any;
@@ -66,7 +67,9 @@ export class VoxelWorld {
            b === BLOCK_DEFS.ROOF_SLATE ||
            b === BLOCK_DEFS.CHERRY_HEARTWOOD ||
            b === BLOCK_DEFS.LANTERN ||
-           b === BLOCK_DEFS.GROUND_PETALS_CARPET;
+           b === BLOCK_DEFS.GROUND_PETALS_CARPET ||
+           b === BLOCK_DEFS.SNOW ||
+           b === BLOCK_DEFS.VOLCANIC_ROCK;
   }
 
   createLeafMaterial(textureKey) {
@@ -117,6 +120,8 @@ export class VoxelWorld {
         new THREE.MeshStandardMaterial({ map: this.textures['grass_side'].texture, roughness: 0.85, vertexColors: true })
       ],
       [BLOCK_DEFS.DIRT]: new THREE.MeshStandardMaterial({ map: this.textures['dirt'].texture, roughness: 0.9, vertexColors: true }),
+      [BLOCK_DEFS.SNOW]: new THREE.MeshStandardMaterial({ map: this.textures['snow'].texture, roughness: 0.95, vertexColors: true }),
+      [BLOCK_DEFS.VOLCANIC_ROCK]: new THREE.MeshStandardMaterial({ map: this.textures['volcanic_rock'].texture, roughness: 0.9, vertexColors: true }),
       [BLOCK_DEFS.STONE]: new THREE.MeshStandardMaterial({ map: this.textures['stone'].texture, roughness: 0.8, vertexColors: true }),
       [BLOCK_DEFS.SAND]: new THREE.MeshStandardMaterial({ map: this.textures['sand'].texture, roughness: 0.85, vertexColors: true }),
       [BLOCK_DEFS.WOOD_LOG]: [
@@ -351,12 +356,68 @@ export class VoxelWorld {
     const lakeDist = Math.hypot(wx - this.lakeCenter.x, (wz - this.lakeCenter.z) * 1.15);
     const height = lakeDist < 18
       ? Math.max(5, step - Math.floor((1.0 - lakeDist / 18) * 6.5))
-      : Math.min(CHUNK_HEIGHT - 6, Math.max(7, step));
+      : Math.min(NATURAL_TERRAIN_MAX, Math.max(7, step));
     return this.carveRiver(height, wx, wz);
   }
 
   getTerrainHeight(wx, wz) {
-    return this.flattenVillage(this.gradeVillageRoad(this.getBaseTerrainHeight(wx, wz), wx, wz), wx, wz);
+    const village = this.flattenVillage(this.gradeVillageRoad(this.getBaseTerrainHeight(wx, wz), wx, wz), wx, wz);
+    return this.raiseFuji(this.gradeFujiRoad(village, wx, wz), wx, wz);
+  }
+
+  getFujiHeight(wx, wz) {
+    const dist = Math.hypot(wx - FUJI.x, wz - FUJI.z);
+    if (dist >= FUJI.radius) return 0;
+    if (dist < FUJI.rimRadius) {
+      const inner = dist / FUJI.rimRadius;
+      return Math.round(FUJI.peakY - FUJI.craterDepth * (1 - inner * inner));
+    }
+    const along = 1 - (dist - FUJI.rimRadius) / (FUJI.radius - FUJI.rimRadius);
+    // Ridges and gullies, fading out toward the smooth summit so the rim stays round
+    const ridges = this.noise.noise2D(wx * 0.05, wz * 0.05) * 3 * Math.min(1, (1 - along) * 3);
+    return Math.round(FUJI.baseY + (FUJI.peakY - FUJI.baseY) * Math.pow(along, FUJI.profilePower) + ridges);
+  }
+
+  raiseFuji(height, wx, wz) {
+    return Math.max(height, this.getFujiHeight(wx, wz));
+  }
+
+  isOnFujiRoad(wx, wz, margin) {
+    return Math.abs(wx - FUJI_ROAD.x) < margin && wz <= FUJI_ROAD.startZ && wz >= FUJI_ROAD.endZ;
+  }
+
+  // An even slope from the village to the foot of the mountain, like the road from the stone path
+  gradeFujiRoad(height, wx, wz) {
+    if (wz > FUJI_ROAD.startZ || wz < FUJI_ROAD.endZ) return height;
+    const dist = Math.abs(wx - FUJI_ROAD.x);
+    if (dist >= FUJI_ROAD.halfWidth + FUJI_ROAD.bankWidth) return height;
+
+    if (this.fujiRoadEndY === undefined) this.fujiRoadEndY = this.getFujiHeight(FUJI_ROAD.x, FUJI_ROAD.endZ);
+    const along = (FUJI_ROAD.startZ - wz) / (FUJI_ROAD.startZ - FUJI_ROAD.endZ);
+    const roadY = Math.round(VILLAGE.groundY + (this.fujiRoadEndY - VILLAGE.groundY) * along);
+    if (dist <= FUJI_ROAD.halfWidth) return roadY;
+
+    const t = (dist - FUJI_ROAD.halfWidth) / FUJI_ROAD.bankWidth;
+    return Math.round(roadY + (height - roadY) * t * t * (3 - 2 * t));
+  }
+
+  // A torii where the road meets the mountain, and a small one on the crater rim
+  buildFujiLandmarks(cx, cz, setStructBlock) {
+    const gates = [
+      { x: FUJI_ROAD.x, z: FUJI_ROAD.endZ - 2, halfWidth: 3, height: 6 },
+      { x: FUJI.x, z: FUJI.z + FUJI.rimRadius + 2, halfWidth: 2, height: 4 }
+    ];
+    for (const gate of gates) {
+      if (Math.floor(gate.x / CHUNK_SIZE) !== cx || Math.floor(gate.z / CHUNK_SIZE) !== cz) continue;
+      const ground = this.getTerrainHeight(gate.x, gate.z);
+      for (const side of [-gate.halfWidth, gate.halfWidth]) {
+        for (let y = 1; y <= gate.height; y++) setStructBlock(gate.x + side, ground + y, gate.z, BLOCK_DEFS.TORII_RED);
+      }
+      for (let dx = -gate.halfWidth - 1; dx <= gate.halfWidth + 1; dx++) {
+        setStructBlock(gate.x + dx, ground + gate.height + 1, gate.z, BLOCK_DEFS.ROOF_SLATE);
+        if (Math.abs(dx) <= gate.halfWidth) setStructBlock(gate.x + dx, ground + gate.height - 1, gate.z, BLOCK_DEFS.TORII_RED);
+      }
+    }
   }
 
   // The road cuts an even slope from the stone path down to the village. Following the natural
@@ -574,9 +635,15 @@ export class VoxelWorld {
         const baseH = Math.max(MIN_GROUND_LEVEL, this.getTerrainHeight(wx, wz));
         const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
 
+        // Bare rock and snow high on the mountain, with an uneven snow line
+        const onFujiRock = baseH >= FUJI.rockY && this.getFujiHeight(wx, wz) === baseH;
+        const snowLine = FUJI.snowY + Math.sin(wx * 0.31 + wz * 0.17) * 2.5;
+
         for (let y = 0; y < CHUNK_HEIGHT; y++) {
           let block = BLOCK_DEFS.AIR;
-          if (y < baseH - 3 || y <= 2) {
+          if (onFujiRock && y <= baseH) {
+            block = y === baseH && baseH >= snowLine ? BLOCK_DEFS.SNOW : BLOCK_DEFS.VOLCANIC_ROCK;
+          } else if (y < baseH - 3 || y <= 2) {
             block = BLOCK_DEFS.STONE;
           } else if (y < baseH) {
             block = BLOCK_DEFS.DIRT;
@@ -593,7 +660,7 @@ export class VoxelWorld {
           // Carve stone walking path along scenic curve
           if (block === BLOCK_DEFS.GRASS) {
             const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
-            if (Math.abs(wx - pathCurve) < 1.6 || this.isOnVillageRoad(wx, wz, VILLAGE_ROAD.halfWidth)) {
+            if (Math.abs(wx - pathCurve) < 1.6 || this.isOnVillageRoad(wx, wz, VILLAGE_ROAD.halfWidth) || this.isOnFujiRoad(wx, wz, FUJI_ROAD.halfWidth)) {
               block = BLOCK_DEFS.STONE;
             }
           }
@@ -628,6 +695,10 @@ export class VoxelWorld {
         const surface = this.getTerrainHeight(wx, wz);
         if (wy >= surface && wy <= surface + VILLAGE_ROAD.clearHeight) return;
       }
+      if (this.isOnFujiRoad(wx, wz, FUJI_ROAD.clearWidth)) {
+        const surface = this.getTerrainHeight(wx, wz);
+        if (blockId !== BLOCK_DEFS.TORII_RED && blockId !== BLOCK_DEFS.ROOF_SLATE && wy >= surface && wy <= surface + FUJI_ROAD.clearHeight) return;
+      }
       const key = `${wx},${wy},${wz}`;
       if (!this.modifiedBlocks.has(key)) {
         const targetChunk = this.getOrCreateChunk(Math.floor(wx / CHUNK_SIZE), Math.floor(wz / CHUNK_SIZE));
@@ -639,6 +710,7 @@ export class VoxelWorld {
 
     this.buildRiverBridges(cx, cz, setStructBlock);
     this.buildVillageHouses(cx, cz, setStructBlock);
+    this.buildFujiLandmarks(cx, cz, setStructBlock);
 
     // Well-spaced organic tree distribution
     for (let lz = 3; lz < CHUNK_SIZE; lz += 8) {
@@ -653,10 +725,10 @@ export class VoxelWorld {
         const lakeDist = Math.hypot(wx - this.lakeCenter.x, wz - this.lakeCenter.z);
         if (lakeDist < 12) continue; // inside lake
         if (this.isOnRiverBank(wx, wz, RIVER_TREE_CLEARANCE)) continue;
-        if (this.isInVillage(wx, wz, VILLAGE_TREE_CLEARANCE) || this.isOnVillageRoad(wx, wz, VILLAGE_ROAD.treeClearance)) continue;
+        if (this.isInVillage(wx, wz, VILLAGE_TREE_CLEARANCE) || this.isOnVillageRoad(wx, wz, VILLAGE_ROAD.treeClearance) || this.isOnFujiRoad(wx, wz, FUJI_ROAD.treeClearance)) continue;
 
         const gy = this.getTerrainHeight(wx, wz);
-        if (gy < 6 || gy > CHUNK_HEIGHT - 13) continue;
+        if (gy < 6 || gy > TREE_MAX_GROUND) continue;
 
         // Avoid spawning on stone path
         const pathCurve = Math.sin(wz * 0.07) * 7.0 - 4;
@@ -790,7 +862,7 @@ export class VoxelWorld {
           const gyBlock = this.getTerrainHeight(gx, gz);
           if (gyBlock >= 7) {
             const pathCurve = Math.sin(gz * 0.07) * 7.0 - 4;
-            if (Math.abs(gx - pathCurve) > 1.8 && !this.isOnVillageRoad(gx, gz, 1.8) && !this.isInVillage(gx, gz)) {
+            if (Math.abs(gx - pathCurve) > 1.8 && !this.isOnVillageRoad(gx, gz, 1.8) && !this.isOnFujiRoad(gx, gz, 1.8) && !this.isInVillage(gx, gz)) {
               setBlock(gx, gyBlock, gz, BLOCK_DEFS.GROUND_PETALS_CARPET);
             }
           }
