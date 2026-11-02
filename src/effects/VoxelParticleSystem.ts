@@ -17,6 +17,7 @@ export class VoxelParticleSystem {
       [BLOCK_DEFS.DIRT]: [0x3d2516, 0x4a2e1c, 0x331e11, 0x52331f],
       [BLOCK_DEFS.STONE]: [0x686a73, 0x777983, 0x5d5f67, 0x464850],
       [BLOCK_DEFS.SNOW]: [0xffffff, 0xe8eef7, 0xdfe7f3],
+      [BLOCK_DEFS.WATER]: [0x9fdcff, 0xffffff, 0x4fc3f7],
       [BLOCK_DEFS.VOLCANIC_ROCK]: [0x3b3a44, 0x45434f, 0x2b2a32],
       [BLOCK_DEFS.SAND]: [0xddcb9d, 0xd4c18f, 0xe6d6ab],
       [BLOCK_DEFS.WOOD_LOG]: [0x3d2128, 0x46272f, 0xbd796a, 0x2a141b],
