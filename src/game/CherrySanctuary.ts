@@ -2,6 +2,14 @@ import { AnimalSystem } from '../creatures/AnimalSystem';
 import { BLOCK_DEFS, BLOCK_NAMES, HOTBAR_ITEMS } from '../world/blocks';
 import { BLOCK_REACH, CHUNK_HEIGHT, CHUNK_SIZE, FUJI, FULLSCREEN_HINT_MS, FULLSCREEN_REFUSED_MESSAGE, IS_TOUCH_DEVICE, LANTERN_REFRESH_MS, LOW_FPS_READINGS, LOW_FPS_THRESHOLD, MIN_RENDER_SCALE, OUT_OF_REACH_MESSAGE, QUALITY, STREAM_BUDGET_MS, SWIM_BUOYANCY, SWIM_DIVE_SPEED, SWIM_PITCH_DEADZONE, SWIM_VERTICAL_SPEED, TOUCH_LOOK_SPEED, UNDERWATER_FOG_COLOR, UNDERWATER_FOG_DENSITY, WATER_EXIT_SPEED, WATER_FLOW_SPEED, fogDensityForRadius, getFullscreenElement, getFullscreenHelp, isRunningAsHomeScreenApp } from '../config';
 import { FujiBackdrop } from '../sky/FujiBackdrop';
+import { Fishing, type FishingEvent } from '../activities/Fishing';
+import { Hunting } from '../activities/Hunting';
+import { getBlockDrops, getItemForBlock, getRequiredPickaxeTier, ITEMS } from '../items/items';
+import { Inventory } from '../items/Inventory';
+import { InventoryPanel } from '../ui/InventoryPanel';
+import type { ArrowHit } from '../creatures/AnimalSystem';
+
+const HOTBAR_STORAGE_KEY = 'cherry_hotbar';
 import { BlockPlacementAnimator } from '../effects/BlockPlacementAnimator';
 import { FishSystem } from '../creatures/FishSystem';
 import { GroundPetalSystem } from '../effects/GroundPetalSystem';
@@ -19,6 +27,11 @@ import { WindSystem } from '../world/WindSystem';
 // 9. MAIN ENGINE ORCHESTRATOR
 // =========================================================================
 export class CherrySanctuary {
+  declare inventory: Inventory;
+  declare inventoryPanel: InventoryPanel;
+  declare hotbarItems: string[];
+  declare fishing: Fishing;
+  declare hunting: Hunting;
   declare fujiBackdrop: FujiBackdrop;
   declare viewportWidth: number;
   declare viewportHeight: number;
@@ -234,6 +247,12 @@ export class CherrySanctuary {
     this.initWorld();
     this.initCharacter();
     this.initPetalsAndLighting();
+    this.inventory = new Inventory();
+    this.hotbarItems = this.loadHotbar();
+    this.inventory.onChange(() => this.refreshHotbarCounts());
+    this.inventoryPanel = new InventoryPanel(this.inventory, this.textures, id => this.putInActiveSlot(id), message => this.showToast(message));
+    this.fishing = new Fishing(this.scene, this.world, (event, item) => this.handleFishingEvent(event, item));
+    this.hunting = new Hunting(this.scene, this.world, this.animals, (killed, hit) => this.handleArrowHit(killed, hit));
     this.initHotbarUI();
     this.initEventListeners();
     this.initHaikuCycler();
@@ -629,10 +648,12 @@ export class CherrySanctuary {
     this.applyLanternIntensity();
   }
 
+  // Each slot holds an item the player can place. The chosen items are remembered.
   initHotbarUI() {
     const bar = document.getElementById('hotbar');
     bar.innerHTML = '';
-    HOTBAR_ITEMS.forEach((item, idx) => {
+    this.hotbarItems.forEach((itemId, idx) => {
+      const item = ITEMS[itemId];
       const slot = document.createElement('div');
       slot.className = `hotbar-slot ${idx === this.activeSlot ? 'active' : ''}`;
       slot.title = item.name;
@@ -642,33 +663,127 @@ export class CherrySanctuary {
       key.textContent = String(idx + 1);
       slot.appendChild(key);
 
-      let texKey = 'grass_top';
-      if (item.id === BLOCK_DEFS.DIRT) texKey = 'dirt';
-      else if (item.id === BLOCK_DEFS.STONE) texKey = 'stone';
-      else if (item.id === BLOCK_DEFS.WOOD_LOG) texKey = 'log_side';
-      else if (item.id === BLOCK_DEFS.WOOD_PLANKS) texKey = 'planks';
-      else if (item.id === BLOCK_DEFS.LEAVES_LIGHT) texKey = 'leaves_light';
-      else if (item.id === BLOCK_DEFS.LEAVES_DEEP) texKey = 'leaves_deep';
-      else if (item.id === BLOCK_DEFS.LEAVES_WHITE) texKey = 'leaves_white';
-      else if (item.id === BLOCK_DEFS.LANTERN) texKey = 'lantern';
-
       // cloneNode copies the canvas size but not its pixels
-      const source = this.textures[texKey].canvas;
+      const source = this.textures[item.texture].canvas;
       const icon = source.cloneNode();
       icon.getContext('2d').drawImage(source, 0, 0);
       slot.appendChild(icon);
 
+      const count = document.createElement('div');
+      count.className = 'slot-count';
+      slot.appendChild(count);
+
       slot.addEventListener('click', () => this.selectSlot(idx));
       bar.appendChild(slot);
     });
+    this.refreshHotbarCounts();
+  }
+
+  refreshHotbarCounts() {
+    document.querySelectorAll('.hotbar-slot').forEach((slot, i) => {
+      const itemId = this.hotbarItems[i];
+      const owned = this.inventory.count(itemId);
+      slot.querySelector('.slot-count').textContent = this.inventory.creative ? '∞' : owned > 0 ? String(owned) : '';
+      slot.classList.toggle('is-empty', !this.inventory.has(itemId));
+    });
+  }
+
+  putInActiveSlot(itemId: string) {
+    this.hotbarItems[this.activeSlot] = itemId;
+    try {
+      localStorage.setItem(HOTBAR_STORAGE_KEY, JSON.stringify(this.hotbarItems));
+    } catch (e) {
+      // Not saved, which only means the default slots next time
+    }
+    this.initHotbarUI();
+    this.showToast(`Ô ${this.activeSlot + 1}: ${ITEMS[itemId].name}`);
+  }
+
+  loadHotbar(): string[] {
+    const defaults = HOTBAR_ITEMS.map(item => getItemForBlock(item.id));
+    try {
+      const saved = JSON.parse(localStorage.getItem(HOTBAR_STORAGE_KEY));
+      if (Array.isArray(saved) && saved.length === defaults.length &&
+          saved.every(id => ITEMS[id] && ITEMS[id].block !== undefined)) return saved;
+    } catch (e) {
+      // Damaged or unavailable: use the default slots
+    }
+    return defaults;
+  }
+
+  toggleInventory() {
+    const open = !this.inventoryPanel.isOpen;
+    this.inventoryPanel.setOpen(open);
+    if (open) {
+      if (document.exitPointerLock) document.exitPointerLock();
+    } else {
+      this.requestPointerLock();
+    }
+  }
+
+  // The button for tools. What it does depends on what the player holds and looks at.
+  useTool() {
+    if (this.isCinematicTour) return;
+    if (this.fishing.isActive) {
+      this.fishing.react();
+      return;
+    }
+    const direction = this.camera.getWorldDirection(new THREE.Vector3());
+    if (this.inventory.has('fishing_rod')) {
+      const water = this.fishing.findWater(this.camera.position, direction);
+      if (water) {
+        this.fishing.cast(water);
+        return;
+      }
+    }
+    if (this.inventory.has('bow')) {
+      if (!this.hunting.canShoot) return;
+      if (!this.inventory.use('arrow')) {
+        this.showToast('Hết mũi tên. Chế tạo thêm từ que gỗ và đá');
+        return;
+      }
+      this.hunting.shoot(this.camera.position, direction);
+      this.audio.playBlockPlace();
+      return;
+    }
+    this.showToast(this.inventory.has('fishing_rod')
+      ? 'Hãy nhìn xuống mặt nước ở gần rồi thả câu'
+      : 'Chế tạo Cần câu hoặc Cung trong Túi Đồ để dùng nút này');
+  }
+
+  handleFishingEvent(event: FishingEvent, item?: string) {
+    if (event === 'cast') {
+      this.showToast('Đã thả câu, chờ cá cắn...');
+    } else if (event === 'bite') {
+      this.showToast('🎣 Cá cắn câu! Bấm ngay!');
+      this.audio.playBlockBreak();
+    } else if (event === 'caught') {
+      this.inventory.add(item);
+      this.showToast(`Câu được: ${ITEMS[item].name}!`);
+      this.audio.playBlockPlace();
+    } else if (event === 'lost') {
+      this.showToast('Cá chạy mất rồi...');
+    } else if (event === 'too-far') {
+      this.showToast('Đi quá xa, đã thu dây câu');
+    }
+  }
+
+  handleArrowHit(killed: boolean, hit: ArrowHit) {
+    if (!killed) {
+      this.showToast('Trúng rồi! Nó đang bỏ chạy');
+      return;
+    }
+    for (const [itemId, amount] of hit.species.drops) this.inventory.add(itemId, amount);
+    this.blockParticles.burst(hit.position.x - 0.5, hit.position.y - 0.5, hit.position.z - 0.5, BLOCK_DEFS.WOOD_LOG, 14);
+    this.showToast(`Săn được lợn rừng: ${hit.species.drops.map(([id, n]) => `+${n} ${ITEMS[id].name}`).join(', ')}`);
   }
 
   selectSlot(idx) {
-    this.activeSlot = (idx + HOTBAR_ITEMS.length) % HOTBAR_ITEMS.length;
+    this.activeSlot = (idx + this.hotbarItems.length) % this.hotbarItems.length;
     document.querySelectorAll('.hotbar-slot').forEach((s, i) => {
       s.classList.toggle('active', i === this.activeSlot);
     });
-    this.showToast(`Đã chọn: ${HOTBAR_ITEMS[this.activeSlot].name}`);
+    this.showToast(`Đã chọn: ${ITEMS[this.hotbarItems[this.activeSlot]].name}`);
   }
 
   initHaikuCycler() {
@@ -707,6 +822,9 @@ export class CherrySanctuary {
     } catch (e) {
       // Private browsing can block storage; the player just types a name again
     }
+
+    document.getElementById('btn-inventory').addEventListener('click', () => this.toggleInventory());
+    document.getElementById('inventory-close').addEventListener('click', () => this.toggleInventory());
 
     document.getElementById('btn-online').addEventListener('click', () => {
       this.showToast(this.multiplayer.describePlayers());
@@ -896,6 +1014,10 @@ export class CherrySanctuary {
         this.showToast(this.isFlyMode ? 'Chế độ bay: BẬT' : 'Chế độ bay: TẮT');
       } else if (e.code === 'KeyM') {
         this.changeMusic();
+      } else if (e.code === 'KeyI' && !e.repeat) {
+        this.toggleInventory();
+      } else if (e.code === 'KeyR' && !e.repeat && this.isLocked) {
+        this.useTool();
       } else if (e.code === 'KeyC') {
         this.toggleCinematicTour();
       } else if (e.code === 'KeyV') {
@@ -910,7 +1032,9 @@ export class CherrySanctuary {
         if (this.isDebugOverlayVisible) this.updateDebugOverlay();
         this.showToast(this.isDebugOverlayVisible ? 'Bật Debug Overlay (F3)' : 'Tắt Debug Overlay');
       } else if (e.code === 'Escape') {
-        if (this.isCinematicTour) {
+        if (this.inventoryPanel.isOpen) {
+          this.inventoryPanel.setOpen(false);
+        } else if (this.isCinematicTour) {
           this.exitCinematicTour();
         } else {
           this.togglePauseMenu();
@@ -1162,6 +1286,12 @@ export class CherrySanctuary {
     }
 
     const bId = target.blockId;
+    const tierNeeded = getRequiredPickaxeTier(bId);
+    if (this.inventory.pickaxeTier() < tierNeeded) {
+      this.showToast(`Khối này cần ${tierNeeded === 2 ? 'Cuốc đá' : 'Cuốc gỗ'}. Chế tạo trong Túi Đồ`);
+      return;
+    }
+
     const isLeaves = (bId >= BLOCK_DEFS.LEAVES_LIGHT && bId <= BLOCK_DEFS.LEAVES_WHITE) ||
                      bId === BLOCK_DEFS.LEAVES_SOFT || bId === BLOCK_DEFS.LEAVES_MAGENTA ||
                      bId === BLOCK_DEFS.WOOD_LOG;
@@ -1175,6 +1305,12 @@ export class CherrySanctuary {
     const editTime = this.world.setBlock(target.x, target.y, target.z, BLOCK_DEFS.AIR);
     this.multiplayer.shareEdit(target.x, target.y, target.z, BLOCK_DEFS.AIR, editTime);
     this.audio.playBlockBreak();
+
+    if (!this.inventory.creative) {
+      const drops = getBlockDrops(bId, Math.random());
+      drops.forEach(([itemId, amount]) => this.inventory.add(itemId, amount));
+      if (drops.length) this.showToast(drops.map(([id, n]) => `+${n} ${ITEMS[id].name}`).join(', '));
+    }
   }
 
   handlePlaceBlock() {
@@ -1199,12 +1335,17 @@ export class CherrySanctuary {
       return;
     }
 
-    const selectedItem = HOTBAR_ITEMS[this.activeSlot];
-    const editTime = this.world.setBlock(p.x, p.y, p.z, selectedItem.id);
-    this.multiplayer.shareEdit(p.x, p.y, p.z, selectedItem.id, editTime);
+    const itemId = this.hotbarItems[this.activeSlot];
+    if (!this.inventory.use(itemId)) {
+      this.showToast(`Hết ${ITEMS[itemId].name}. Đào hoặc chế tạo thêm nhé`);
+      return;
+    }
+    const blockId = ITEMS[itemId].block;
+    const editTime = this.world.setBlock(p.x, p.y, p.z, blockId);
+    this.multiplayer.shareEdit(p.x, p.y, p.z, blockId, editTime);
 
     // Pop / scale animation on placed block
-    this.blockPlacer.spawnPop(p.x, p.y, p.z, selectedItem.id);
+    this.blockPlacer.spawnPop(p.x, p.y, p.z, blockId);
 
     this.audio.playBlockPlace();
   }
@@ -1307,6 +1448,7 @@ export class CherrySanctuary {
     jump.addEventListener('touchcancel', releaseJump);
     onPress('mob-break', () => this.handleBreakBlock());
     onPress('mob-place', () => this.handlePlaceBlock());
+    onPress('mob-use', () => this.useTool());
 
     // iOS ignores user-scalable=no, so block its page pinch-zoom here
     document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -2124,6 +2266,8 @@ export class CherrySanctuary {
 
     this.fish.update(dt, this.isCinematicTour ? this.camera.position : this.player.pos);
     this.animals.update(dt, this.isCinematicTour ? this.camera.position : this.player.pos, this.viewRadius);
+    this.fishing.update(dt, this.camera.position);
+    this.hunting.update(dt);
     this.multiplayer.update(dt, this.player, isMoving);
 
     // 9. Highlight Box on Look Target

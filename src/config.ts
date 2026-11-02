@@ -83,7 +83,7 @@ export const QUALITY = IS_TOUCH_DEVICE
       lanternLights: 2,
       flyingPetals: 500,
       fish: 25,
-      animals: { deer: 3, sheep: 8, rabbit: 6 },
+      animals: { boar: 4, deer: 3, sheep: 8, rabbit: 6 },
       stars: 800,
       groundPetals: 400,
       flowerDensity: 0.09,
@@ -96,7 +96,7 @@ export const QUALITY = IS_TOUCH_DEVICE
       lanternLights: 4,
       flyingPetals: 1400,
       fish: 60,
-      animals: { deer: 9, sheep: 16, rabbit: 12 },
+      animals: { boar: 6, deer: 9, sheep: 16, rabbit: 12 },
       stars: 1600,
       groundPetals: 900,
       flowerDensity: 0.2, // share of grass columns with a flower

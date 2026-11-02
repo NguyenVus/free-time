@@ -743,6 +743,148 @@ body.touring .mobile-btn-cluster {
   }
 }
 
+
+/* Bag and crafting */
+#inventory-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: none;
+  padding: 12px;
+  overflow-y: auto;
+  background: rgba(10, 6, 14, 0.6);
+}
+#inventory-panel.visible {
+  display: flex;
+}
+.inventory-box {
+  margin: auto;
+  width: 100%;
+  max-width: 560px;
+  padding: 18px;
+  background: rgba(28, 16, 32, 0.97);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+}
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.inventory-box h2 {
+  font-size: 17px;
+}
+.inventory-box h3 {
+  margin: 14px 0 8px;
+  font-size: 14px;
+  color: var(--blush-pink);
+}
+.inventory-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+.inventory-hint, .inventory-empty {
+  margin: 6px 0 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+#inventory-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 6px;
+}
+.inventory-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+  font-family: inherit;
+  cursor: pointer;
+}
+.inventory-cell-name {
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+}
+.item-icon {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  image-rendering: pixelated;
+}
+.item-emoji {
+  font-size: 22px;
+  line-height: 28px;
+  text-align: center;
+}
+.recipe-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.recipe-text {
+  flex: 1;
+  min-width: 0;
+}
+.recipe-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.recipe-needs {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.recipe-craft {
+  flex: none;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--deep-pink);
+  color: #fff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.recipe-craft:disabled {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.45);
+  cursor: default;
+}
+.inventory-creative {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+.slot-count {
+  position: absolute;
+  right: 2px;
+  bottom: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+}
+.hotbar-slot.is-empty canvas {
+  opacity: 0.3;
+}
+
 /* Small screens, including narrow desktop windows */
 .controls-touch {
   display: none;
@@ -870,6 +1012,14 @@ body.touring .mobile-btn-cluster {
     display: flex;
     order: -1;
   }
+  #btn-inventory {
+    order: -1;
+  }
+  /* Four buttons in two rows, so they stay clear of the joystick on the narrowest phones */
+  .mobile-btn-cluster {
+    display: grid;
+    grid-template-columns: auto auto;
+  }
   /* A touch leaves the hover style stuck until the next tap elsewhere */
   .hud-btn:hover {
     background: var(--glass-bg);
@@ -892,17 +1042,12 @@ body.touring .mobile-btn-cluster {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
-  #welcome-screen, #pause-menu {
+  #welcome-screen, #pause-menu, #inventory-panel {
     touch-action: pan-y;
   }
   /* iOS zooms the page when a control with text smaller than 16px gets focus */
   .setting-row select {
     font-size: 16px;
-  }
-}
-@media (pointer: coarse) and (orientation: portrait) {
-  .mobile-btn-cluster {
-    flex-direction: row;
   }
 }
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
